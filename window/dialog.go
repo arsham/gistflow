@@ -1,3 +1,8 @@
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
+// Use of this source code is governed by the MIT license
+// License that can be found in the LICENSE file.
+
+// Package window shows all kinds of windows and dialogs.
 package window
 
 import (
@@ -28,7 +33,7 @@ func (s *Service) MainWindow() error {
 
 	s.app = widgets.NewQApplication(len(os.Args), os.Args)
 	s.window = widgets.NewQMainWindow(nil, 0)
-	s.dialog, err = qtlib.LoadResource(s.window, "./window/qml/mainwindow.ui")
+	s.dialog, err = qtlib.LoadResource(s.window, "./qml/mainwindow.ui")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +71,7 @@ func (s *Service) MainWindow() error {
 func (s *Service) showGist(id string) error {
 	var content string
 	dialog := widgets.NewQMainWindow(s.dialog, 0)
-	ui, err := qtlib.LoadResource(dialog, "./window/qml/gist.ui")
+	ui, err := qtlib.LoadResource(dialog, "./qml/gist.ui")
 	if err != nil {
 		return err
 	}

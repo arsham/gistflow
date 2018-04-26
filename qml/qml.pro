@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2018-04-26T07:30:09
+# Project created by QtCreator 2018-04-26T12:56:17
 #
 #-------------------------------------------------
 
@@ -25,12 +25,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        dialog.cpp
+        mainwindow.cpp
 
 HEADERS += \
-        dialog.h
+        mainwindow.h
 
 FORMS += \
-        dialog.ui \
-    gist.ui \
-    mainwindow.ui
+        mainwindow.ui \
+    gist.ui
