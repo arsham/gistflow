@@ -1,0 +1,9 @@
+package: github.com/arsham/gisty
+import:
+- package: github.com/arsham/qtlib
+  repo:    git@github.com:arsham/qtlib
+- package: github.com/therecipe/qt
+  subpackages:
+  - core
+  - gui
+  - widgets

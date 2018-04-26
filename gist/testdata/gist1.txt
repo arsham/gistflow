@@ -1,0 +1,46 @@
+[{
+    "url": "https://api.github.com/gists/1b212f0843127d2d061f0d53fb581680",
+    "forks_url": "https://api.github.com/gists/1b212f0843127d2d061f0d53fb581680/forks",
+    "commits_url": "https://api.github.com/gists/1b212f0843127d2d061f0d53fb581680/commits",
+    "id": "1b212f0843127d2d061f0d53fb581680",
+    "git_pull_url": "https://gist.github.com/1b212f0843127d2d061f0d53fb581680.git",
+    "git_push_url": "https://gist.github.com/1b212f0843127d2d061f0d53fb581680.git",
+    "html_url": "https://gist.github.com/1b212f0843127d2d061f0d53fb581680",
+    "files": {
+      "replace_string_in_files.sh": {
+        "filename": "replace_string_in_files.sh",
+        "type": "application/x-sh",
+        "language": "Shell",
+        "raw_url": "https://gist.githubusercontent.com/arsham/1b212f0843127d2d061f0d53fb581680/raw/f53e6f7e9812564dba0a46034229c1028721d535/replace_string_in_files.sh",
+        "size": 64
+      }
+    },
+    "public": true,
+    "created_at": "2018-04-25T20:38:21Z",
+    "updated_at": "2018-04-25T20:38:21Z",
+    "description": "Replace string in all files recursively",
+    "comments": 0,
+    "user": null,
+    "comments_url": "https://api.github.com/gists/1b212f0843127d2d061f0d53fb581680/comments",
+    "owner": {
+      "login": "arsham",
+      "id": 428611,
+      "avatar_url": "https://avatars1.githubusercontent.com/u/428611?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/arsham",
+      "html_url": "https://github.com/arsham",
+      "followers_url": "https://api.github.com/users/arsham/followers",
+      "following_url": "https://api.github.com/users/arsham/following{/other_user}",
+      "gists_url": "https://api.github.com/users/arsham/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/arsham/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/arsham/subscriptions",
+      "organizations_url": "https://api.github.com/users/arsham/orgs",
+      "repos_url": "https://api.github.com/users/arsham/repos",
+      "events_url": "https://api.github.com/users/arsham/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/arsham/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "truncated": false
+  }
+]

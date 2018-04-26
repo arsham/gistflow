@@ -1,0 +1,14 @@
+hash: 738a9e07d377ca8dea85767a41c1e8ff21631cb228a8fd41f50be0f910412c3e
+updated: 2018-04-26T12:08:34.60700889+01:00
+imports:
+- name: github.com/arsham/qtlib
+  version: 832b94ee446288f401e477af137f8ba7f234b156
+  repo: git@github.com:arsham/qtlib
+- name: github.com/therecipe/qt
+  version: 2f06d25d15c908d2334d3f37745c7bc7e56508ee
+  subpackages:
+  - core
+  - gui
+  - uitools
+  - widgets
+testImports: []
