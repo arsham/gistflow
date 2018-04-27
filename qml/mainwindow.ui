@@ -16,7 +16,17 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
+     <widget class="QLineEdit" name="userInput">
+      <property name="toolTip">
+       <string>Case insensitive, and fuzzy match</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QListView" name="listView">
+      <property name="toolTip">
+       <string>Double click to view</string>
+      </property>
       <property name="editTriggers">
        <set>QAbstractItemView::NoEditTriggers</set>
       </property>

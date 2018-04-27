@@ -7,6 +7,7 @@ package window
 
 import (
 	"os"
+	"strings"
 
 	"github.com/arsham/gisty/gist"
 	"github.com/arsham/qtlib"
@@ -46,12 +47,16 @@ func (s *Service) MainWindow() error {
 
 func (s *Service) setupUI() {
 	model := NewGistModel(nil)
-	lv := widgets.NewQListViewFromPointer(
+	proxy := core.NewQSortFilterProxyModel(nil)
+	proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
+	proxy.SetSourceModel(model)
+
+	listView := widgets.NewQListViewFromPointer(
 		s.dialog.FindChild("listView", core.Qt__FindChildrenRecursively).Pointer(),
 	)
-	lv.SetModel(model)
+	listView.SetModel(proxy)
 	go s.populate(model)
-	lv.ConnectDoubleClicked(func(index *core.QModelIndex) {
+	listView.ConnectDoubleClicked(func(index *core.QModelIndex) {
 		err := s.gistDialog(index)
 		if err != nil {
 			id := index.Data(GistID).ToString()
@@ -61,6 +66,14 @@ func (s *Service) setupUI() {
 	quit := widgets.NewQActionFromPointer(
 		s.dialog.FindChild("actionQuit", core.Qt__FindChildrenRecursively).Pointer(),
 	)
+	userInput := widgets.NewQLineEditFromPointer(
+		s.dialog.FindChild("userInput", core.Qt__FindChildrenRecursively).Pointer(),
+	)
+	userInput.SetClearButtonEnabled(true)
+	userInput.ConnectTextChanged(func(text string) {
+		newText := strings.Split(text, "")
+		proxy.SetFilterWildcard(strings.Join(newText, "*"))
+	})
 	quit.ConnectTriggered(func(bool) {
 		s.app.Quit()
 	})
