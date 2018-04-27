@@ -40,9 +40,9 @@ func (s *Service) MainWindow() error {
 	icon := gui.NewQIcon5("./qml/app.ico")
 
 	s.sysTray = widgets.NewQSystemTrayIcon(s.dialog)
+	s.sysTray.SetIcon(icon)
 	s.sysTray.SetVisible(true)
 	s.sysTray.SetToolTip("Gisty")
-	s.sysTray.SetIcon(icon)
 
 	s.window.SetCentralWidget(s.dialog)
 	s.window.SetWindowIcon(icon)
@@ -87,24 +87,18 @@ func (s *Service) setupUI() {
 		s.app.Quit()
 	})
 
-	trayMenu := widgets.NewQMenu(nil)
-	toggle := trayMenu.AddAction("Hide")
-	toggle.ConnectTriggered(func(bool) {
-		switch toggle.Text() {
-		case "Show":
-			s.dialog.Show()
-			toggle.SetText("Hide")
-		default:
+	mainMenu := widgets.NewQMenuFromPointer(
+		s.dialog.FindChild("mainMenu", core.Qt__FindChildrenRecursively).Pointer(),
+	)
+
+	s.sysTray.SetContextMenu(mainMenu)
+	s.sysTray.ConnectActivated(func(widgets.QSystemTrayIcon__ActivationReason) {
+		if s.dialog.IsVisible() {
 			s.dialog.Hide()
-			toggle.SetText("Show")
+		} else {
+			s.dialog.Show()
 		}
 	})
-	exit := trayMenu.AddAction("Quit")
-	exit.ConnectTriggered(func(bool) {
-		s.app.Quit()
-	})
-
-	s.sysTray.SetContextMenu(trayMenu)
 }
 
 func (s *Service) populate(model *GistModel) {
