@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/arsham/gisty/gist"
 )
@@ -27,12 +28,17 @@ func TestGistListErrors(t *testing.T) {
 		name     string
 		username string
 		token    string
+		perPage  int
+		page     int
 		err      []error // any of errors
 	}{
-		{"no input", "", "", []error{gist.ErrEmptyUsername, gist.ErrEmptyToken}},
-		{"no username", "", "XfJu", []error{gist.ErrEmptyUsername}},
-		{"no token", "AdthCCaIXhhN", "", []error{gist.ErrEmptyToken}},
-		{"spaces in username", "UMgEziO jLGLkhKcjG", "NbkGUkRlQNmIX", []error{gist.ErrBadUsername}},
+		{"no input", "", "", 10, 100, []error{gist.ErrEmptyUsername, gist.ErrEmptyToken}},
+		{"no username", "", "XfJu", 10, 100, []error{gist.ErrEmptyUsername}},
+		{"no token", "AdthCCaIXhhN", "", 10, 100, []error{gist.ErrEmptyToken}},
+		{"spaces in username", "UMgEziO jLGLkhKcjG", "NbkGUkRlQNmIX", 10, 100, []error{gist.ErrBadUsername}},
+		{"zero per page", "UMgEziOjLGLadfsdfsfdf", "NbkGUkRlQNmIX", 0, 10, []error{gist.ErrPagination}},
+		{"negative per page", "UMgEziOjLGLkhKcjG", "NbkGUkRlQNmIX", 10, -100, []error{gist.ErrPagination}},
+		{"negative page", "UMgEziOjLGsdfLkhKcjG", "NbkGUkRlQNmIX", -10, 100, []error{gist.ErrPagination}},
 	}
 
 	for _, tc := range tcs {
@@ -41,7 +47,7 @@ func TestGistListErrors(t *testing.T) {
 				Username: tc.username,
 				Token:    tc.token,
 			}
-			_, err := g.List()
+			_, err := g.List(tc.perPage, tc.page)
 			if !anyError(err, tc.err) {
 				t.Errorf("g.List(): err = %v, want any of %v", err, tc.err)
 			}
@@ -63,12 +69,54 @@ func TestGistList(t *testing.T) {
 		Token:    "sometoken",
 		API:      ts.URL,
 	}
-	l, err := s.List()
+	l, err := s.List(10, 1)
 	if err != nil {
 		t.Errorf("g.List(): err = %v, want nil", err)
 	}
 	if l == nil {
 		t.Error("g.List(): l = nil, want []Response")
+	}
+}
+
+func TestIter(t *testing.T) {
+	d, err := ioutil.ReadFile("testdata/gist1.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	size := 10
+	input := make(chan []byte, size)
+	for i := 0; i < size; i++ {
+		input <- d
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(<-input)
+	}))
+	close(input) // because we don't want the server waiting
+	defer ts.Close()
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "sometoken",
+		API:      ts.URL,
+	}
+	done := make(chan struct{})
+	go func() {
+		count := 0
+		for r := range s.Iter() {
+			count++
+			if r.ID != "1b212f0843127d2d061f0d53fb581680" {
+				t.Errorf("r.ID = %s, want %s", r.ID, "1b212f0843127d2d061f0d53fb581680")
+			}
+		}
+		if count != size {
+			t.Errorf("got %d iteration, want %d", count, size)
+		}
+		close(done)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Error("Iter did not finish")
+	case <-done:
 	}
 }
 

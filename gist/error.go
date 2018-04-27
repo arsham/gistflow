@@ -13,4 +13,5 @@ var (
 	ErrBadUsername   = errors.New("bad username")
 	ErrEmptyID       = errors.New("id cannot be empty")
 	ErrGistNotFound  = errors.New("gist not found")
+	ErrPagination    = errors.New("pagination")
 )

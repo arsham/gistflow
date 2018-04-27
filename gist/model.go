@@ -7,7 +7,7 @@ package gist
 // Response is the response coming back from gist API.
 type Response struct {
 	ID          string `json:"id"`
-	URL         string `json:"url"`
+	URL         string `json:"html_url"`
 	Description string `json:"description"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`

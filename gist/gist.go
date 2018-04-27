@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -29,8 +31,7 @@ func (s *Service) api() string {
 }
 
 // List fetches all gists for the user.
-// http://api.github.com/users/arsham/gists?access_token=4fe4218d35fa707d9a964142bd120ea5d37428e3
-func (s *Service) List() ([]Response, error) {
+func (s *Service) List(perPage, page int) ([]Response, error) {
 	if s.Token == "" {
 		return nil, ErrEmptyToken
 	}
@@ -40,9 +41,20 @@ func (s *Service) List() ([]Response, error) {
 	if strings.Contains(s.Username, " ") {
 		return nil, ErrBadUsername
 	}
-
-	url := fmt.Sprintf("%s/users/%s/gists?access_token=%s", s.api(), s.Username, s.Token)
-	r, err := http.Get(url)
+	if perPage <= 0 || page < 0 {
+		return nil, ErrPagination
+	}
+	urlPath := fmt.Sprintf("%s/users/%s/gists", s.api(), s.Username)
+	url, err := url.Parse(urlPath)
+	if err != nil {
+		return nil, err
+	}
+	v := url.Query()
+	v.Add("access_token", s.Token)
+	v.Add("page", strconv.Itoa(page))
+	v.Add("per_page", strconv.Itoa(perPage))
+	url.RawQuery = v.Encode()
+	r, err := http.Get(url.String())
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +72,26 @@ func (s *Service) List() ([]Response, error) {
 	}
 
 	return res, nil
+}
+
+// Iter returns a channel which emits new Response objects. It will follow the
+// paginations until it's exhausted.
+func (s *Service) Iter() chan Response {
+	ch := make(chan Response)
+	go func() {
+		perPage := 40
+		for page := 0; ; page += perPage {
+			gs, err := s.List(perPage, page)
+			if err != nil || len(gs) == 0 {
+				break
+			}
+			for _, g := range gs {
+				ch <- g
+			}
+		}
+		close(ch)
+	}()
+	return ch
 }
 
 // Get gets a gist item by its id.

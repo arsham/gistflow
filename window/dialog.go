@@ -51,10 +51,10 @@ func (s *Service) setupUI() {
 	)
 	lv.SetModel(model)
 	go s.populate(model)
-	lv.ConnectDoubleClicked(func(i *core.QModelIndex) {
-		id := i.Data(GistID).ToString()
-		err := s.showGist(id)
+	lv.ConnectDoubleClicked(func(index *core.QModelIndex) {
+		err := s.gistDialog(index)
 		if err != nil {
+			id := index.Data(GistID).ToString()
 			messagebox(s.dialog).warningf("%s: %s", err, id)
 		}
 	})
@@ -64,23 +64,27 @@ func (s *Service) setupUI() {
 	quit.ConnectTriggered(func(bool) {
 		s.app.Quit()
 	})
-
 }
+
 func (s *Service) populate(model *GistModel) {
-	list, err := s.GistService.List()
-	if err != nil {
-		messagebox(s.dialog).error(err.Error())
-	}
-	for _, item := range list {
+	var foundOne bool
+	for item := range s.GistService.Iter() {
+		foundOne = true
 		var gg = NewGist(nil)
 		gg.SetGistID(item.ID)
+		gg.SetGistURL(item.URL)
 		gg.SetDescription(item.Description)
 		model.AddGist(gg)
 	}
+	if !foundOne {
+		messagebox(s.dialog).error("didn't find any gists")
+	}
 }
 
-func (s *Service) showGist(id string) error {
+func (s *Service) gistDialog(index *core.QModelIndex) error {
 	var content string
+	id := index.Data(GistID).ToString()
+	url := index.Data(GistURL).ToString()
 	dialog := widgets.NewQMainWindow(s.dialog, 0)
 	ui, err := qtlib.LoadResource(dialog, "./qml/gist.ui")
 	if err != nil {
@@ -111,6 +115,13 @@ func (s *Service) showGist(id string) error {
 	clipboard.ConnectClicked(func(bool) {
 		s.app.Clipboard().SetText(content, gui.QClipboard__Clipboard)
 	})
+	browser := widgets.NewQPushButtonFromPointer(
+		ui.FindChild("browser", core.Qt__FindChildrenRecursively).Pointer(),
+	)
+	browser.ConnectClicked(func(bool) {
+		gui.QDesktopServices_OpenUrl(core.NewQUrl3(url, 0))
+	})
+
 	dialog.Show()
 	dialog.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
 		if event.Key() == int(core.Qt__Key_Escape) {

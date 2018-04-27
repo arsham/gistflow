@@ -1,10 +1,13 @@
 package window
 
-import "github.com/therecipe/qt/core"
+import (
+	"github.com/therecipe/qt/core"
+)
 
-var (
-	GistID      = int(core.Qt__UserRole)
+const (
 	Description = int(core.Qt__DisplayRole)
+	GistID      = int(core.Qt__UserRole) + 1<<iota
+	GistURL
 )
 
 type GistModel struct {
@@ -22,6 +25,7 @@ type Gist struct {
 	core.QObject
 
 	_ string `property:"gistID"`
+	_ string `property:"gistURL"`
 	_ string `property:"description"`
 }
 
@@ -32,6 +36,7 @@ func init() {
 func (m *GistModel) init() {
 	m.SetRoles(map[int]*core.QByteArray{
 		GistID:      core.NewQByteArray2("gistID", len("gistID")),
+		GistURL:     core.NewQByteArray2("gistURL", len("gistURL")),
 		Description: core.NewQByteArray2("description", len("description")),
 	})
 
@@ -53,10 +58,12 @@ func (m *GistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	}
 
 	var p = m.Gists()[index.Row()]
-
 	switch role {
 	case GistID:
 		return core.NewQVariant14(p.GistID())
+
+	case GistURL:
+		return core.NewQVariant14(p.GistURL())
 
 	case Description:
 		return core.NewQVariant14(p.Description())
