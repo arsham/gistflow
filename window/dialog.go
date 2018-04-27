@@ -22,12 +22,12 @@ type Service struct {
 	dialog      *widgets.QWidget
 	window      *widgets.QMainWindow
 	app         *widgets.QApplication
+	sysTray     *widgets.QSystemTrayIcon
 }
 
 // MainWindow shows the main window.
 func (s *Service) MainWindow() error {
 	var err error
-
 	core.QCoreApplication_SetAttribute(core.Qt__AA_ShareOpenGLContexts, true)
 	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
 
@@ -37,7 +37,16 @@ func (s *Service) MainWindow() error {
 	if err != nil {
 		return err
 	}
+	icon := gui.NewQIcon5("./qml/app.ico")
+
+	s.sysTray = widgets.NewQSystemTrayIcon(s.dialog)
+	s.sysTray.SetVisible(true)
+	s.sysTray.SetToolTip("Gisty")
+	s.sysTray.SetIcon(icon)
+
 	s.window.SetCentralWidget(s.dialog)
+	s.window.SetWindowIcon(icon)
+
 	s.dialog.Show()
 	s.setupUI()
 	widgets.QApplication_Exec()
@@ -77,6 +86,25 @@ func (s *Service) setupUI() {
 	quit.ConnectTriggered(func(bool) {
 		s.app.Quit()
 	})
+
+	trayMenu := widgets.NewQMenu(nil)
+	toggle := trayMenu.AddAction("Hide")
+	toggle.ConnectTriggered(func(bool) {
+		switch toggle.Text() {
+		case "Show":
+			s.dialog.Show()
+			toggle.SetText("Hide")
+		default:
+			s.dialog.Hide()
+			toggle.SetText("Show")
+		}
+	})
+	exit := trayMenu.AddAction("Quit")
+	exit.ConnectTriggered(func(bool) {
+		s.app.Quit()
+	})
+
+	s.sysTray.SetContextMenu(trayMenu)
 }
 
 func (s *Service) populate(model *GistModel) {
@@ -127,6 +155,7 @@ func (s *Service) gistDialog(index *core.QModelIndex) error {
 	)
 	clipboard.ConnectClicked(func(bool) {
 		s.app.Clipboard().SetText(content, gui.QClipboard__Clipboard)
+		s.sysTray.ShowMessage("Info", "Gist has been copied to clipboard", widgets.QSystemTrayIcon__Information, 4000)
 	})
 	browser := widgets.NewQPushButtonFromPointer(
 		ui.FindChild("browser", core.Qt__FindChildrenRecursively).Pointer(),
