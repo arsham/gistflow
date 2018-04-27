@@ -4,11 +4,4 @@ imports:
 - name: github.com/arsham/qtlib
   version: 832b94ee446288f401e477af137f8ba7f234b156
   repo: git@github.com:arsham/qtlib
-- name: github.com/therecipe/qt
-  version: 2f06d25d15c908d2334d3f37745c7bc7e56508ee
-  subpackages:
-  - core
-  - gui
-  - uitools
-  - widgets
 testImports: []

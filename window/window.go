@@ -7,7 +7,6 @@ package window
 
 import (
 	"os"
-	"strings"
 
 	"github.com/arsham/gisty/gist"
 	"github.com/arsham/qtlib"
@@ -16,81 +15,70 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+// https://github.com/therecipe/advanced-examples/tree/master/test
+
 // Service is in charge of user interaction with the dialog.
 type Service struct {
 	GistService gist.Service
-	dialog      *widgets.QWidget
-	window      *widgets.QMainWindow
 	app         *widgets.QApplication
+	window      *widgets.QMainWindow
+	dialog      *widgets.QWidget
+	layout      *widgets.QVBoxLayout
 	sysTray     *widgets.QSystemTrayIcon
+	listView    *widgets.QListView
+	userInput   *widgets.QLineEdit
 }
 
-// MainWindow shows the main window.
+// MainWindow shows the main window. prefix is the path prefix.
 func (s *Service) MainWindow() error {
-	var err error
-	core.QCoreApplication_SetAttribute(core.Qt__AA_ShareOpenGLContexts, true)
-	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
-
-	s.app = widgets.NewQApplication(len(os.Args), os.Args)
-	s.window = widgets.NewQMainWindow(nil, 0)
-	s.dialog, err = qtlib.LoadResource(s.window, "./qml/mainwindow.ui")
+	err := s.displayMainWindow()
 	if err != nil {
 		return err
 	}
-	icon := gui.NewQIcon5("./qml/app.ico")
+	widgets.QApplication_Exec()
+	return nil
+}
 
+func (s *Service) displayMainWindow() (err error) {
+	core.QCoreApplication_SetAttribute(core.Qt__AA_ShareOpenGLContexts, true)
+	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
+	s.app = widgets.NewQApplication(len(os.Args), os.Args)
+	s.window = widgets.NewQMainWindow(nil, 0)
+	s.dialog, err = s.mainDialog()
+	if err != nil {
+		return err
+	}
+
+	icon := gui.NewQIcon5("./qml/app.ico")
 	s.sysTray = widgets.NewQSystemTrayIcon(s.dialog)
 	s.sysTray.SetIcon(icon)
 	s.sysTray.SetVisible(true)
 	s.sysTray.SetToolTip("Gisty")
 
-	s.window.SetCentralWidget(s.dialog)
+	s.window.SetupUi(s.dialog)
 	s.window.SetWindowIcon(icon)
-
 	s.dialog.Show()
-	s.setupUI()
-	widgets.QApplication_Exec()
 
+	model := NewGistModel(nil)
+	s.setupUI(model)
+	s.loadSettings()
+	go s.populate(model)
 	return nil
 }
 
-func (s *Service) setupUI() {
-	model := NewGistModel(nil)
+func (s *Service) setupUI(model *GistModel) {
 	proxy := core.NewQSortFilterProxyModel(nil)
 	proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
 	proxy.SetSourceModel(model)
 
-	listView := widgets.NewQListViewFromPointer(
-		s.dialog.FindChild("listView", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	listView.SetModel(proxy)
-	go s.populate(model)
-	listView.ConnectDoubleClicked(func(index *core.QModelIndex) {
-		err := s.gistDialog(index)
-		if err != nil {
-			id := index.Data(GistID).ToString()
-			messagebox(s.dialog).warningf("%s: %s", err, id)
-		}
-	})
-	quit := widgets.NewQActionFromPointer(
-		s.dialog.FindChild("actionQuit", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	userInput := widgets.NewQLineEditFromPointer(
-		s.dialog.FindChild("userInput", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	userInput.SetClearButtonEnabled(true)
-	userInput.ConnectTextChanged(func(text string) {
-		newText := strings.Split(text, "")
-		proxy.SetFilterWildcard(strings.Join(newText, "*"))
-	})
-	quit.ConnectTriggered(func(bool) {
-		s.app.Quit()
-	})
+	s.listView = s.listViewWidget()
+	s.listView.SetModel(proxy)
+	s.userInput = s.userInputWidget(proxy)
 
-	mainMenu := widgets.NewQMenuFromPointer(
-		s.dialog.FindChild("mainMenu", core.Qt__FindChildrenRecursively).Pointer(),
-	)
+	s.layout.AddWidget(s.userInput, 0, 0)
+	s.layout.AddWidget(s.listView, 0, 0)
 
+	mainMenu := s.mainMenu()
 	s.sysTray.SetContextMenu(mainMenu)
 	s.sysTray.ConnectActivated(func(widgets.QSystemTrayIcon__ActivationReason) {
 		if s.dialog.IsVisible() {
@@ -98,6 +86,29 @@ func (s *Service) setupUI() {
 		} else {
 			s.dialog.Show()
 		}
+	})
+	s.window.SetTabOrder(s.userInput, s.listView)
+}
+
+func (s *Service) loadSettings() {
+	settings := core.NewQSettings3(
+		core.QSettings__NativeFormat,
+		core.QSettings__UserScope,
+		"gisty",
+		"app_settings",
+		nil,
+	)
+	tmp := widgets.NewQWidget(nil, 0)
+	tmp.SetGeometry2(100, 100, 600, 600)
+	defSize := tmp.SaveGeometry()
+	sizeVar := settings.Value("mainWindowGeometry", core.NewQVariant15(defSize))
+	s.dialog.RestoreGeometry(sizeVar.ToByteArray())
+
+	s.app.ConnectAboutToQuit(func() {
+		current := s.dialog.SaveGeometry()
+		currentVar := core.NewQVariant15(current.QByteArray_PTR())
+		settings.SetValue("mainWindowGeometry", currentVar)
+		settings.Sync()
 	})
 }
 
