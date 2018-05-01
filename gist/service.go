@@ -95,30 +95,30 @@ func (s *Service) Iter() chan Response {
 }
 
 // Get gets a gist item by its id.
-func (s *Service) Get(id string) (Gist, error) {
+func (s *Service) Get(id string) (ResponseGist, error) {
 	if id == "" {
-		return Gist{}, ErrEmptyID
+		return ResponseGist{}, ErrEmptyID
 	}
 
 	url := fmt.Sprintf("%s/gists/%s?access_token=%s", s.api(), id, s.Token)
 	r, err := http.Get(url)
 	if err != nil {
-		return Gist{}, err
+		return ResponseGist{}, err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode == http.StatusNotFound {
-		return Gist{}, ErrGistNotFound
+		return ResponseGist{}, ErrGistNotFound
 	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return Gist{}, err
+		return ResponseGist{}, err
 	}
 
-	var g Gist
+	var g ResponseGist
 	err = json.Unmarshal(body, &g)
 	if err != nil {
-		return Gist{}, err
+		return ResponseGist{}, err
 	}
 	return g, nil
 }

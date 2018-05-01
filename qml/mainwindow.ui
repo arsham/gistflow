@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>416</width>
-    <height>312</height>
+    <width>1043</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,20 +16,23 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QLineEdit" name="userInput">
-      <property name="toolTip">
-       <string>Case insensitive, and fuzzy match</string>
-      </property>
-     </widget>
+     <widget class="QLineEdit" name="lineEdit"/>
     </item>
     <item>
-     <widget class="QListView" name="listView">
-      <property name="toolTip">
-       <string>Double click to view</string>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-      <property name="editTriggers">
-       <set>QAbstractItemView::NoEditTriggers</set>
-      </property>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Tab 1</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>Tab 2</string>
+       </attribute>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -39,24 +42,39 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>416</width>
-     <height>28</height>
+     <width>1043</width>
+     <height>30</height>
     </rect>
    </property>
-   <widget class="QMenu" name="mainMenu">
-    <property name="title">
-     <string>Options</string>
-    </property>
-    <addaction name="actionQuit"/>
-   </widget>
-   <addaction name="mainMenu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionQuit">
-   <property name="text">
-    <string>Quit</string>
+  <widget class="QDockWidget" name="dockWidget">
+   <property name="minimumSize">
+    <size>
+     <width>100</width>
+     <height>130</height>
+    </size>
    </property>
-  </action>
+   <property name="features">
+    <set>QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>test</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QListView" name="listView"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
  </widget>
  <resources/>
  <connections/>

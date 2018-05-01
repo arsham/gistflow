@@ -17,10 +17,10 @@ func main() {
 		Username: "arsham",
 		Token:    token,
 	}
-	ws := window.Service{
+	ws := window.MainWindow{
 		GistService: gs,
 	}
-	err := ws.MainWindow()
+	err := ws.Display()
 	if err != nil {
 		log.Fatal(err)
 	}

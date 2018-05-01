@@ -13,12 +13,12 @@ type Response struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
-// Gist represents one gist.
-type Gist struct {
-	Files map[string]File `json:"files"`
+// ResponseGist represents one gist.
+type ResponseGist struct {
+	Files map[string]ResponseFile `json:"files"`
 }
 
-// File is one file in a Gist.
-type File struct {
+// ResponseFile is one file in a ResponseGist.
+type ResponseFile struct {
 	Content string `json:"content"`
 }

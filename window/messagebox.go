@@ -6,12 +6,14 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-type mb struct{ dialog *widgets.QWidget }
-
-func messagebox(parent *widgets.QWidget) *mb {
-	return &mb{parent}
+type boxLogger interface {
+	error(msg string)
+	warning(msg string)
+	warningf(format string, a ...interface{})
 }
+type mb struct{ dialog *widgets.QMainWindow }
 
+func messagebox(parent *widgets.QMainWindow) *mb { return &mb{parent} }
 func (m mb) error(msg string) {
 	qmb := widgets.NewQMessageBox(nil)
 	qmb.Critical(m.dialog, "Warning", msg, widgets.QMessageBox__Ok, widgets.QMessageBox__Ok)

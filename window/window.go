@@ -7,9 +7,11 @@ package window
 
 import (
 	"os"
+	"strings"
+	"unicode"
 
 	"github.com/arsham/gisty/gist"
-	"github.com/arsham/qtlib"
+	"github.com/pkg/errors"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -17,163 +19,263 @@ import (
 
 // https://github.com/therecipe/advanced-examples/tree/master/test
 
-// Service is in charge of user interaction with the dialog.
-type Service struct {
+const (
+	mainWindowGeometry = "mainWindowGeometry"
+)
+
+// MainWindow is in charge of user interaction with the dialog.
+type MainWindow struct {
 	GistService gist.Service
-	app         *widgets.QApplication
-	window      *widgets.QMainWindow
-	dialog      *widgets.QWidget
-	layout      *widgets.QVBoxLayout
-	sysTray     *widgets.QSystemTrayIcon
-	listView    *widgets.QListView
-	userInput   *widgets.QLineEdit
+	logger      boxLogger
+	ConfName    string // namespace in setting file
+	settings    *core.QSettings
+
+	app       *widgets.QApplication
+	window    *widgets.QMainWindow
+	sysTray   *widgets.QSystemTrayIcon
+	menubar   *menuBar
+	statusbar *widgets.QStatusBar
+	icon      *gui.QIcon
+
+	userInput  *widgets.QLineEdit
+	tabWidget  *widgets.QTabWidget
+	tabs       []*widgets.QWidget
+	dockWidget *widgets.QDockWidget
+	listView   *widgets.QListView
+
+	model *GistModel
+	proxy *core.QSortFilterProxyModel
 }
 
-// MainWindow shows the main window. prefix is the path prefix.
-func (s *Service) MainWindow() error {
-	err := s.displayMainWindow()
+// Display shows the main window.
+func (m *MainWindow) Display() error {
+	core.QCoreApplication_SetAttribute(core.Qt__AA_ShareOpenGLContexts, true)
+	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
+	m.app = widgets.NewQApplication(len(os.Args), os.Args)
+	if m.ConfName == "" {
+		m.ConfName = "gisty"
+	}
+	err := m.setupUI()
 	if err != nil {
 		return err
 	}
+	m.window.Show()
+	// use singleShot
+	m.setModel()
+	m.settings = getSettings(m.ConfName)
+	m.loadSettings()
+	m.populate()
+	m.setupInteractions()
 	widgets.QApplication_Exec()
 	return nil
 }
 
-func (s *Service) displayMainWindow() (err error) {
-	core.QCoreApplication_SetAttribute(core.Qt__AA_ShareOpenGLContexts, true)
-	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
-	s.app = widgets.NewQApplication(len(os.Args), os.Args)
-	s.window = widgets.NewQMainWindow(nil, 0)
-	s.dialog, err = s.mainDialog()
-	if err != nil {
-		return err
+func (m *MainWindow) setupUI() (err error) {
+	if m.logger == nil {
+		m.logger = messagebox(m.window)
 	}
+	m.window = widgets.NewQMainWindow(nil, 0)
+	m.window.SetGeometry(core.NewQRect4(0, 0, 1043, 600))
+	centralWidget := widgets.NewQWidget(m.window, core.Qt__Widget)
+	vLayout := widgets.NewQVBoxLayout2(centralWidget)
+	vLayout.SetObjectName("verticalLayout")
 
-	icon := gui.NewQIcon5("./qml/app.ico")
-	s.sysTray = widgets.NewQSystemTrayIcon(s.dialog)
-	s.sysTray.SetIcon(icon)
-	s.sysTray.SetVisible(true)
-	s.sysTray.SetToolTip("Gisty")
+	if m.tabs == nil {
+		m.tabs = make([]*widgets.QWidget, 0)
+	}
+	m.tabWidget = widgets.NewQTabWidget(centralWidget)
+	m.tabWidget.SetObjectName("tabWidget")
+	m.tabWidget.SetTabsClosable(true)
+	tab1 := widgets.NewQWidget(m.tabWidget, core.Qt__Widget)
+	tab1.SetObjectName("Untitled")
+	m.tabWidget.AddTab(tab1, "Untitled")
+	m.tabs = append(m.tabs, tab1)
+	m.userInput = widgets.NewQLineEdit(m.window)
+	vLayout.AddWidget(m.userInput, 0, 0)
+	vLayout.AddWidget(m.tabWidget, 0, 0)
+	m.window.SetCentralWidget(centralWidget)
 
-	s.window.SetupUi(s.dialog)
-	s.window.SetWindowIcon(icon)
-	s.dialog.Show()
+	m.menubar = NewMenuBar(m.window)
+	m.menubar.SetObjectName("Menubar")
+	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
+	m.window.SetMenuBar(m.menubar)
 
-	model := NewGistModel(nil)
-	s.setupUI(model)
-	s.loadSettings()
-	go s.populate(model)
+	m.statusbar = widgets.NewQStatusBar(m.window)
+	m.statusbar.SetObjectName("Statusbar")
+	m.window.SetStatusBar(m.statusbar)
+
+	m.dockWidget = widgets.NewQDockWidget("Gists", m.window, 0)
+	m.dockWidget.SetObjectName("DockWidget")
+	m.dockWidget.SetMinimumSize(core.NewQSize2(100, 130))
+	m.dockWidget.SetFeatures(widgets.QDockWidget__DockWidgetMovable | widgets.QDockWidget__DockWidgetClosable)
+	m.dockWidget.SetAllowedAreas(core.Qt__LeftDockWidgetArea | core.Qt__RightDockWidgetArea)
+
+	widgetContent := widgets.NewQWidget(m.dockWidget, core.Qt__Widget)
+	widgetContent.SetObjectName("DockWidgetContents")
+	vLayout2 := widgets.NewQVBoxLayout2(widgetContent)
+	vLayout2.SetObjectName("verticalLayout_2")
+	vLayout2.SetContentsMargins(0, 0, 0, 0)
+	vLayout2.SetSpacing(0)
+	m.listView = widgets.NewQListView(widgetContent)
+	m.listView.SetObjectName("ListView")
+	vLayout2.AddWidget(m.listView, 0, 0)
+	m.dockWidget.SetWidget(m.listView)
+
+	m.tabWidget.SetCurrentIndex(0)
+	m.window.AddDockWidget(core.Qt__LeftDockWidgetArea, m.dockWidget)
+
+	m.icon = gui.NewQIcon5("./qml/app.ico")
+	m.sysTray = widgets.NewQSystemTrayIcon(m.window)
+	m.sysTray.SetIcon(m.icon)
+	m.sysTray.SetVisible(true)
+	m.sysTray.SetToolTip("Gisty")
+	m.sysTray.SetContextMenu(m.menubar.optionsMenu)
+
+	m.window.SetWindowIcon(m.icon)
+	// m.window.SetTabOrder(m.userInput, m.listView)
+
+	m.menubar.quitAction.ConnectTriggered(func(bool) {
+		m.app.Quit()
+	})
 	return nil
 }
 
-func (s *Service) setupUI(model *GistModel) {
-	proxy := core.NewQSortFilterProxyModel(nil)
-	proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
-	proxy.SetSourceModel(model)
+func (m *MainWindow) setModel() {
+	m.model = NewGistModel(nil)
 
-	s.listView = s.listViewWidget()
-	s.listView.SetModel(proxy)
-	s.userInput = s.userInputWidget(proxy)
+	m.proxy = core.NewQSortFilterProxyModel(nil)
+	m.proxy.SetSourceModel(m.model)
+	m.proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
 
-	s.layout.AddWidget(s.userInput, 0, 0)
-	s.layout.AddWidget(s.listView, 0, 0)
-
-	mainMenu := s.mainMenu()
-	s.sysTray.SetContextMenu(mainMenu)
-	s.sysTray.ConnectActivated(func(widgets.QSystemTrayIcon__ActivationReason) {
-		if s.dialog.IsVisible() {
-			s.dialog.Hide()
-		} else {
-			s.dialog.Show()
-		}
-	})
-	s.window.SetTabOrder(s.userInput, s.listView)
+	m.listView.SetModel(m.proxy)
 }
 
-func (s *Service) loadSettings() {
-	settings := core.NewQSettings3(
-		core.QSettings__NativeFormat,
-		core.QSettings__UserScope,
-		"gisty",
-		"app_settings",
-		nil,
-	)
+func (m *MainWindow) loadSettings() {
 	tmp := widgets.NewQWidget(nil, 0)
 	tmp.SetGeometry2(100, 100, 600, 600)
 	defSize := tmp.SaveGeometry()
-	sizeVar := settings.Value("mainWindowGeometry", core.NewQVariant15(defSize))
-	s.dialog.RestoreGeometry(sizeVar.ToByteArray())
-
-	s.app.ConnectAboutToQuit(func() {
-		current := s.dialog.SaveGeometry()
-		currentVar := core.NewQVariant15(current.QByteArray_PTR())
-		settings.SetValue("mainWindowGeometry", currentVar)
-		settings.Sync()
-	})
+	sizeVar := m.settings.Value(mainWindowGeometry, core.NewQVariant15(defSize))
+	m.window.RestoreGeometry(sizeVar.ToByteArray())
+	m.app.ConnectAboutToQuit(m.saveSettings)
 }
 
-func (s *Service) populate(model *GistModel) {
+func (m *MainWindow) saveSettings() {
+	current := m.window.SaveGeometry()
+	currentVar := core.NewQVariant15(current.QByteArray_PTR())
+	m.settings.SetValue(mainWindowGeometry, currentVar)
+	m.settings.Sync()
+}
+
+func getSettings(name string) *core.QSettings {
+	return core.NewQSettings3(
+		core.QSettings__NativeFormat,
+		core.QSettings__UserScope,
+		"gisty",
+		name,
+		nil,
+	)
+}
+func (m *MainWindow) populate() {
 	var foundOne bool
-	for item := range s.GistService.Iter() {
+	// go goroutine
+	for item := range m.GistService.Iter() {
 		foundOne = true
-		var gg = NewGist(nil)
-		gg.SetGistID(item.ID)
-		gg.SetGistURL(item.URL)
-		gg.SetDescription(item.Description)
-		model.AddGist(gg)
+		var g = NewGistItem(nil)
+		g.SetGistID(item.ID)
+		g.SetGistURL(item.URL)
+		g.SetDescription(item.Description)
+		m.model.AddGist(g)
 	}
 	if !foundOne {
-		messagebox(s.dialog).error("didn't find any gists")
+		m.logger.error("didn't find any gists")
 	}
 }
 
-func (s *Service) gistDialog(index *core.QModelIndex) error {
-	var content string
-	id := index.Data(GistID).ToString()
-	url := index.Data(GistURL).ToString()
-	dialog := widgets.NewQMainWindow(s.dialog, 0)
-	ui, err := qtlib.LoadResource(dialog, "./qml/gist.ui")
-	if err != nil {
-		return err
-	}
-	g, err := s.GistService.Get(id)
-	if err != nil {
-		return err
-	}
-	view := widgets.NewQPlainTextEditFromPointer(
-		ui.FindChild("gist", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	for _, f := range g.Files {
-		content = f.Content
-		break
-	}
-	view.SetPlainText(content)
-	widgets.NewQDialogFromPointer(ui.Pointer()).SetModal(true)
-	ok := widgets.NewQPushButtonFromPointer(
-		ui.FindChild("ok", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	ok.ConnectClicked(func(bool) {
-		dialog.Close()
+func (m *MainWindow) setupInteractions() {
+	m.userInput.ConnectTextChanged(func(text string) {
+		newText := strings.Split(text, "")
+		m.proxy.SetFilterWildcard(strings.Join(newText, "*"))
 	})
-	clipboard := widgets.NewQPushButtonFromPointer(
-		ui.FindChild("clipboard", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	clipboard.ConnectClicked(func(bool) {
-		s.app.Clipboard().SetText(content, gui.QClipboard__Clipboard)
-		s.sysTray.ShowMessage("Info", "Gist has been copied to clipboard", widgets.QSystemTrayIcon__Information, 4000)
+	m.userInput.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
+		if event.Key() == int(core.Qt__Key_Up) || event.Key() == int(core.Qt__Key_Down) {
+			m.listView.SetFocus2()
+		}
+		m.userInput.KeyPressEventDefault(event)
 	})
-	browser := widgets.NewQPushButtonFromPointer(
-		ui.FindChild("browser", core.Qt__FindChildrenRecursively).Pointer(),
-	)
-	browser.ConnectClicked(func(bool) {
-		gui.QDesktopServices_OpenUrl(core.NewQUrl3(url, 0))
-	})
+	// listView.ConnectDoubleClicked(openGist)
 
-	dialog.Show()
-	dialog.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
-		if event.Key() == int(core.Qt__Key_Escape) {
-			dialog.Close()
+	m.listView.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
+		switch core.Qt__Key(event.Key()) {
+		case core.Qt__Key_Enter, core.Qt__Key_Return:
+			index := m.listView.CurrentIndex()
+			err := m.openGist(index.Data(GistID).ToString())
+			if err != nil {
+				m.logger.error(err.Error())
+			}
+		case core.Qt__Key_Delete, core.Qt__Key_Space:
+			fallthrough
+		case core.Qt__Key_Left, core.Qt__Key_Right:
+			m.userInput.SetFocus2()
+		default:
+			char := event.Text()
+			for _, c := range char {
+				if unicode.IsPrint(c) {
+					// m.userInput.SetText(m.userInput.Text() + char)
+					m.userInput.SetFocus2()
+				}
+				break
+			}
 		}
 	})
+}
+
+func (m *MainWindow) openGist(id string) error {
+	var (
+		content string
+		name    string
+	)
+	rg, err := m.GistService.Get(id)
+	if err != nil {
+		return errors.Wrapf(err, "id: %s", id)
+	}
+
+	for n, f := range rg.Files {
+		content = f.Content
+		name = n
+		break
+	}
+
+	g := &tabGist{
+		id:      id,
+		content: content,
+		label:   name,
+	}
+	tab := NewTab(m.tabWidget)
+	tab.showGist(m.tabWidget, g)
+	return nil
+}
+
+func (m *MainWindow) gistDialog(index *core.QModelIndex) error {
+	// widgets.NewQDialogFromPointer(dialog.Pointer()).SetModal(true)
+	// ok := ui.ok
+	// ok.ConnectClicked(func(bool) {
+	// 	dialog.Close()
+	// })
+	// clipboard := ui.clipboard
+	// clipboard.ConnectClicked(func(bool) {
+	// 	m.app.Clipboard().SetText(content, gui.QClipboard__Clipboard)
+	// 	m.sysTray.ShowMessage("Info", "Gist has been copied to clipboard", widgets.QSystemTrayIcon__Information, 4000)
+	// })
+	// browser := ui.browser
+	// browser.ConnectClicked(func(bool) {
+	// 	gui.QDesktopServices_OpenUrl(core.NewQUrl3(url, 0))
+	// })
+
+	// dialog.Show()
+	// dialog.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
+	// 	if event.Key() == int(core.Qt__Key_Escape) {
+	// 		dialog.Close()
+	// 	}
+	// })
 	return nil
 }

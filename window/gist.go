@@ -1,3 +1,7 @@
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
+// Use of this source code is governed by the MIT license
+// License that can be found in the LICENSE file.
+
 package window
 
 import (
@@ -10,18 +14,26 @@ const (
 	GistURL
 )
 
+// tabGist defines one gist item in a tab.
+type tabGist struct {
+	id      string
+	label   string
+	content string
+}
+
 type GistModel struct {
 	core.QAbstractListModel
 
 	_ func() `constructor:"init"`
 
 	_ map[int]*core.QByteArray `property:"roles"`
-	_ []*Gist                  `property:"gists"`
+	_ []*gistItem              `property:"gists"`
 
-	_ func(*Gist) `slot:"addGist"`
+	_ func(*gistItem) `slot:"addGist"`
 }
 
-type Gist struct {
+// gistItem is one row in the QListView.
+type gistItem struct {
 	core.QObject
 
 	_ string `property:"gistID"`
@@ -30,7 +42,7 @@ type Gist struct {
 }
 
 func init() {
-	Gist_QRegisterMetaType()
+	gistItem_QRegisterMetaType()
 }
 
 func (m *GistModel) init() {
@@ -85,7 +97,7 @@ func (m *GistModel) roleNames() map[int]*core.QByteArray {
 	return m.Roles()
 }
 
-func (m *GistModel) addGist(p *Gist) {
+func (m *GistModel) addGist(p *gistItem) {
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.Gists()), len(m.Gists()))
 	m.SetGists(append(m.Gists(), p))
 	m.EndInsertRows()

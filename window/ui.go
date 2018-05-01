@@ -1,86 +1,54 @@
 package window
 
-import (
-	"strings"
-	"unicode"
+// func (m *MainWindow) listViewWidget() *widgets.QListView {
+// 	openGist := func(index *core.QModelIndex) {
+// 		err := m.gistDialog(index)
+// 		if err != nil {
+// 			id := index.Data(GistID).ToString()
+// 			m.logger.warningf("listViewWidget: %s: %s", err, id)
+// 		}
+// 	}
 
-	"github.com/therecipe/qt/core"
-	"github.com/therecipe/qt/gui"
-	"github.com/therecipe/qt/widgets"
-)
+// 	listView := widgets.NewQListView(m.dialog)
+// 	listView.SetObjectName("listView")
+// 	})
 
-func (s *Service) mainDialog() (*widgets.QWidget, error) {
-	dialog := widgets.NewQWidget(nil, 0)
-	s.layout = widgets.NewQVBoxLayout()
-	dialog.SetLayout(s.layout)
-	return dialog, nil
-}
+// 	return listView
+// }
 
-func (s *Service) listViewWidget() *widgets.QListView {
-	openGist := func(index *core.QModelIndex) {
-		err := s.gistDialog(index)
-		if err != nil {
-			id := index.Data(GistID).ToString()
-			messagebox(s.dialog).warningf("%s: %s", err, id)
-		}
-	}
+// type gistDialog struct {
+// 	gist      *widgets.QPlainTextEdit
+// 	ok        *widgets.QPushButton
+// 	clipboard *widgets.QPushButton
+// 	browser   *widgets.QPushButton
+// }
 
-	listView := widgets.NewQListView(s.dialog)
-	listView.ConnectDoubleClicked(openGist)
-	listView.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
-		switch event.Key() {
-		case int(core.Qt__Key_Enter), int(core.Qt__Key_Return):
-			index := listView.CurrentIndex()
-			openGist(index)
-		case int(core.Qt__Key_Up), int(core.Qt__Key_Down):
-		default:
-			char := event.Text()
-			for _, c := range char {
-				if unicode.IsPrint(c) {
-					s.userInput.SetText(s.userInput.Text() + char)
-					s.userInput.SetFocus2()
-				}
-				break
-			}
-		}
-	})
+// func (g *gistDialog) setupUI(parent *widgets.QDialog) {
+// 	vLayout := widgets.NewQVBoxLayout2(nil)
+// 	vLayout.SetObjectName("vLayout")
+// 	hLayout := widgets.NewQHBoxLayout2(nil)
+// 	hLayout.SetObjectName("hLayout")
+// 	hLayout2 := widgets.NewQHBoxLayout2(nil)
+// 	hLayout2.SetObjectName("hLayout2")
 
-	return listView
-}
+// 	g.gist = widgets.NewQPlainTextEdit(parent)
+// 	g.gist.SetObjectName("gist")
+// 	vLayout.AddWidget(g.gist, 0, 0)
 
-func (s *Service) userInputWidget(proxy *core.QSortFilterProxyModel) *widgets.QLineEdit {
-	userInput := widgets.NewQLineEdit(s.dialog)
-	userInput.SetClearButtonEnabled(true)
-	userInput.ConnectTextChanged(func(text string) {
-		newText := strings.Split(text, "")
-		proxy.SetFilterWildcard(strings.Join(newText, "*"))
-	})
-	userInput.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
-		if event.Key() == int(core.Qt__Key_Up) || event.Key() == int(core.Qt__Key_Down) {
-			s.listView.SetFocus2()
-		}
-		userInput.KeyPressEventDefault(event)
-	})
+// 	spacer := widgets.NewQSpacerItem(479, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+// 	hLayout2.AddItem(spacer)
 
-	return userInput
-}
+// 	g.ok = widgets.NewQPushButton2("Ok", parent)
+// 	g.ok.SetObjectName("ok")
 
-func (s *Service) mainMenu() *widgets.QMenu {
-	quit := widgets.NewQAction(s.window)
-	quit.SetObjectName("actionQuit")
-	quit.ConnectTriggered(func(bool) {
-		s.app.Quit()
-	})
-	quit.SetShortcut(gui.QKeySequence_FromString("Ctrl+Q", 0))
-	quit.SetText("Quit")
-
-	mainMenu := widgets.NewQMenu2("Option", s.window)
-	mainMenu.AddActions([]*widgets.QAction{quit})
-
-	menuBar := widgets.NewQMenuBar(s.window)
-	menuBar.SetObjectName("menuBar")
-	menuBar.AddMenu(mainMenu)
-
-	s.layout.SetMenuBar(menuBar)
-	return mainMenu
-}
+// 	hLayout2.AddWidget(g.ok, 0, 0)
+// 	g.clipboard = widgets.NewQPushButton2("Copy to Clipboard", parent)
+// 	g.clipboard.SetObjectName("clipboard")
+// 	hLayout2.AddWidget(g.clipboard, 0, 0)
+// 	g.browser = widgets.NewQPushButton2("In Browser", parent)
+// 	g.browser.SetObjectName("browser")
+// 	hLayout2.AddWidget(g.browser, 0, 0)
+// 	vLayout.AddLayout(hLayout2, 0)
+// 	hLayout.AddLayout(vLayout, 0)
+// 	parent.SetLayout(hLayout)
+// }
