@@ -13,15 +13,18 @@ import (
 )
 
 func TestMenubar(t *testing.T) {
-	tcs := []func(*testing.T) bool{
-		testMenuBar,
-		testCtrlQ,
-	}
-	for _, tc := range tcs {
-		if forward := tRunner.RunT(t, tc); !forward {
-			return
+	tRunner.Run(func() {
+		tcs := map[string]func(*testing.T) bool{
+			"testMenuBar": testMenuBar,
+			"testCtrlQ":   testCtrlQ,
 		}
-	}
+		for name, tc := range tcs {
+			if !tc(t) {
+				t.Errorf("stopped at %s", name)
+				return
+			}
+		}
+	})
 }
 
 func testMenuBar(t *testing.T) bool {

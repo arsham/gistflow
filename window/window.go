@@ -37,11 +37,11 @@ type MainWindow struct {
 	statusbar *widgets.QStatusBar
 	icon      *gui.QIcon
 
-	userInput  *widgets.QLineEdit
-	tabWidget  *widgets.QTabWidget
-	tabs       []*widgets.QWidget
-	dockWidget *widgets.QDockWidget
-	listView   *widgets.QListView
+	userInput   *widgets.QLineEdit
+	tabWidget   *widgets.QTabWidget
+	tabGistList map[string]*Tab // gist id to the tab
+	dockWidget  *widgets.QDockWidget
+	listView    *widgets.QListView
 
 	model *GistModel
 	proxy *core.QSortFilterProxyModel
@@ -80,8 +80,8 @@ func (m *MainWindow) setupUI() (err error) {
 	vLayout := widgets.NewQVBoxLayout2(centralWidget)
 	vLayout.SetObjectName("verticalLayout")
 
-	if m.tabs == nil {
-		m.tabs = make([]*widgets.QWidget, 0)
+	if m.tabGistList == nil {
+		m.tabGistList = make(map[string]*Tab, 0)
 	}
 	m.tabWidget = widgets.NewQTabWidget(centralWidget)
 	m.tabWidget.SetObjectName("tabWidget")
@@ -89,11 +89,13 @@ func (m *MainWindow) setupUI() (err error) {
 	tab1 := widgets.NewQWidget(m.tabWidget, core.Qt__Widget)
 	tab1.SetObjectName("Untitled")
 	m.tabWidget.AddTab(tab1, "Untitled")
-	m.tabs = append(m.tabs, tab1)
+	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 	m.userInput = widgets.NewQLineEdit(m.window)
 	vLayout.AddWidget(m.userInput, 0, 0)
 	vLayout.AddWidget(m.tabWidget, 0, 0)
 	m.window.SetCentralWidget(centralWidget)
+
+	m.tabWidget.ConnectTabCloseRequested(m.closeTab)
 
 	m.menubar = NewMenuBar(m.window)
 	m.menubar.SetObjectName("Menubar")
@@ -234,6 +236,10 @@ func (m *MainWindow) openGist(id string) error {
 		content string
 		name    string
 	)
+	if g, ok := m.tabGistList[id]; ok {
+		m.tabWidget.SetCurrentWidget(g)
+		return nil
+	}
 	rg, err := m.GistService.Get(id)
 	if err != nil {
 		return errors.Wrapf(err, "id: %s", id)
@@ -252,7 +258,28 @@ func (m *MainWindow) openGist(id string) error {
 	}
 	tab := NewTab(m.tabWidget)
 	tab.showGist(m.tabWidget, g)
+	m.tabGistList[id] = tab
 	return nil
+}
+
+func (m *MainWindow) tabIDFromIndex(index int) string {
+	tab := m.tabWidget.Widget(index)
+	if tab.Pointer() == nil {
+		return ""
+	}
+
+	for name, o := range m.tabGistList {
+		if o.Pointer() == tab.Pointer() {
+			return name
+		}
+	}
+	return ""
+}
+
+func (m *MainWindow) closeTab(index int) {
+	id := m.tabIDFromIndex(index)
+	m.tabWidget.RemoveTab(index)
+	delete(m.tabGistList, id)
 }
 
 func (m *MainWindow) gistDialog(index *core.QModelIndex) error {

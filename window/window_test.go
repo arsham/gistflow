@@ -29,24 +29,35 @@ func TestMain(m *testing.M) {
 }
 
 func TestMainWindow(t *testing.T) {
-	tcs := []func(t *testing.T) bool{
-		testWindowStartupWidgets,
-		testWindowModel,
-		testPopulateError,
-		testPopulate,
-		testLoadingGeometry,
-		// testLoadingState,
-		testFilteringGists,
-		testListViewKeys,
-		testViewGist,
-		testClickViewGist,
-		testExchangingFocus,
+	type testCase struct {
+		name string
+		f    func(t *testing.T) bool
 	}
-	for _, tc := range tcs {
-		if next := tRunner.RunT(t, tc); !next {
-			return
+	tRunner.Run(func() {
+		tcs := []testCase{
+			// testLoadingState,
+			{"testWindowStartupWidgets", testWindowStartupWidgets},
+			{"testWindowModel", testWindowModel},
+			{"testPopulateError", testPopulateError},
+			{"testPopulate", testPopulate},
+			{"testLoadingGeometry", testLoadingGeometry},
+			{"testFilteringGists", testFilteringGists},
+			{"testListViewKeys", testListViewKeys},
+			{"testViewGist", testViewGist},
+			{"testClickViewGist", testClickViewGist},
+			{"testExchangingFocus", testExchangingFocus},
+			{"testWindowCloseTab", testWindowCloseTab},
+			{"testOpeningGistTwice", testOpeningGistTwice},
+			{"testRemoveOpenTab", testRemoveOpenTab},
+			{"testTabIdFromIndex", testTabIdFromIndex},
 		}
-	}
+		for _, tc := range tcs {
+			if !tc.f(t) {
+				t.Errorf("stopped at %s", tc.name)
+				return
+			}
+		}
+	})
 }
 
 type logger struct {
@@ -150,8 +161,8 @@ func testWindowStartupWidgets(t *testing.T) bool {
 		t.Error("mw.tabWidget = nil, want *widgets.QTabWidget")
 		return false
 	}
-	if mw.tabs == nil {
-		t.Error("mw.tabs = nil, want []*widgets.QWidget")
+	if mw.tabGistList == nil {
+		t.Error("mw.tabGistList = nil, want []*tabGist")
 		return false
 	}
 	if mw.listView == nil {
@@ -529,6 +540,7 @@ func testClickViewGist(t *testing.T) bool {
 		if !called {
 			t.Error("didn't call for gist")
 		}
+		delete(mw.tabGistList, gres.ID)
 	}
 
 	if !called {
@@ -597,6 +609,231 @@ func testExchangingFocus(t *testing.T) bool {
 		if mw.userInput.HasFocus() {
 			t.Errorf("%x: userInput didn't loose focus", tc)
 		}
+	}
+
+	return true
+}
+
+func testWindowCloseTab(t *testing.T) bool {
+	var (
+		name   = "test"
+		called bool
+	)
+
+	g := &tabGist{
+		id:      "uWIkJYdkFuVwYcyy",
+		label:   "LpqrRCgBBYY",
+		content: "fLGLysiOuxReut\nASUonvyd",
+	}
+
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+	mw.setupUI()
+	app.SetActiveWindow(mw.window)
+	mw.window.Show()
+
+	tab := NewTab(mw.tabWidget)
+	if tab == nil {
+		t.Error("NewTab(mw.tabWidget) = nil, want *Tab")
+		return false
+	}
+
+	tab.showGist(mw.tabWidget, g)
+	currentSize := mw.tabWidget.Count()
+	index := mw.tabWidget.IndexOf(tab)
+	mw.tabWidget.ConnectTabCloseRequested(func(i int) {
+		if i == index {
+			called = true
+			return
+		}
+		t.Errorf("i = %d, want %d", i, index)
+	})
+
+	mw.tabWidget.TabCloseRequested(index)
+
+	if !called {
+		t.Error("didn't close the tab")
+	}
+	if mw.tabWidget.Count() != currentSize-1 {
+		t.Errorf("mw.tabWidget.Count() = %d, want %d", mw.tabWidget.Count(), currentSize-1)
+	}
+	if mw.tabWidget.IndexOf(tab) != -1 {
+		t.Errorf("mw.tabWidget.IndexOf(tab) = %d, want %d", mw.tabWidget.IndexOf(tab), -1)
+	}
+
+	if _, ok := mw.tabGistList[g.id]; ok {
+		t.Errorf("%s was not removed from the list", g.id)
+	}
+	return true
+}
+
+func testOpeningGistTwice(t *testing.T) bool {
+	var (
+		name = "test"
+		id1  = "mbzsNwJS"
+		id2  = "eulYvWSUHubADRV"
+	)
+
+	files := map[string]gist.ResponseFile{
+		"GqrqZkTNpw": gist.ResponseFile{Content: "uMWDmwSvLlqtFXZUX"},
+	}
+	gres := gist.ResponseGist{
+		Files: files,
+	}
+
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+	defer gistTs.Close()
+
+	mw.setupUI()
+	mw.GistService.API = gistTs.URL
+
+	startingSize := mw.tabWidget.Count()
+	mw.openGist(id1)
+	if mw.tabWidget.Count() != startingSize+1 {
+		t.Errorf("mw.tabWidget.Count() = %d, want %d", mw.tabWidget.Count(), startingSize+1)
+	}
+	if mw.tabWidget.CurrentIndex() != 1 {
+		t.Errorf("mw.tabWidget.CurrentIndex() = %d, want 1", mw.tabWidget.CurrentIndex())
+	}
+
+	mw.openGist(id2)
+	if mw.tabWidget.Count() != startingSize+2 {
+		t.Errorf("mw.tabWidget.Count() = %d, want %d", mw.tabWidget.Count(), startingSize+2)
+	}
+	if mw.tabWidget.CurrentIndex() != 2 {
+		t.Errorf("mw.tabWidget.CurrentIndex() = %d, want 2", mw.tabWidget.CurrentIndex())
+	}
+
+	mw.openGist(id1)
+	if mw.tabWidget.Count() != startingSize+2 {
+		t.Errorf("mw.tabWidget.Count() = %d, want %d", mw.tabWidget.Count(), startingSize+2)
+	}
+	if mw.tabWidget.CurrentIndex() != 1 {
+		t.Errorf("mw.tabWidget.CurrentIndex() = %d, want 1", mw.tabWidget.CurrentIndex())
+	}
+
+	return true
+}
+
+func testRemoveOpenTab(t *testing.T) bool {
+	var (
+		name = "test"
+		id1  = "mbzsNwJS"
+		id2  = "eulYvWSUHubADRV"
+		id3  = "zdXyiCAdDkG"
+	)
+
+	files := map[string]gist.ResponseFile{
+		"GqrqZkTNpw": gist.ResponseFile{Content: "uMWDmwSvLlqtFXZUX"},
+	}
+	gres := gist.ResponseGist{
+		Files: files,
+	}
+
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+	defer gistTs.Close()
+
+	mw.setupUI()
+	mw.GistService.API = gistTs.URL
+
+	currentLen := len(mw.tabGistList)
+	mw.openGist(id1)
+	if len(mw.tabGistList) != currentLen+1 {
+		t.Errorf("len(mw.tabGistList) = %d, want %d", len(mw.tabGistList), currentLen+1)
+	}
+	if _, ok := mw.tabGistList[id1]; !ok {
+		t.Errorf("%s not found in mw.tabGistList", id1)
+	}
+	mw.tabWidget.TabCloseRequested(mw.tabWidget.CurrentIndex())
+	if len(mw.tabGistList) != currentLen {
+		t.Errorf("len(mw.tabGistList) = %d, want %d", len(mw.tabGistList), currentLen)
+	}
+	if _, ok := mw.tabGistList[id1]; ok {
+		t.Errorf("%s is still in mw.tabGistList", id1)
+	}
+	mw.openGist(id2)
+	mw.openGist(id3)
+	err := mw.openGist(id1)
+	if err != nil {
+		t.Errorf("mw.openGist(%s) = %v, want nil", id1, mw.openGist(id1))
+	}
+	if len(mw.tabGistList) != currentLen+3 {
+		t.Errorf("len(mw.tabGistList) = %d, want %d", len(mw.tabGistList), currentLen+3)
+	}
+	if _, ok := mw.tabGistList[id1]; !ok {
+		t.Errorf("%s not found in mw.tabGistList", id1)
+	}
+
+	index := mw.tabWidget.IndexOf(mw.tabGistList[id1])
+	if mw.tabWidget.CurrentIndex() != index {
+		t.Errorf("mw.tabWidget.CurrentIndex() = %d, want %d", mw.tabWidget.CurrentIndex(), index)
+	}
+
+	return true
+}
+
+func testTabIdFromIndex(t *testing.T) bool {
+	var (
+		name = "test"
+		id1  = "mbzsNwJS"
+		id2  = "eulYvWSUHubADRV"
+	)
+
+	files := map[string]gist.ResponseFile{
+		"GqrqZkTNpw": gist.ResponseFile{Content: "uMWDmwSvLlqtFXZUX"},
+	}
+	gres := gist.ResponseGist{
+		Files: files,
+	}
+
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+	defer gistTs.Close()
+
+	mw.setupUI()
+	mw.GistService.API = gistTs.URL
+	currentIndex := mw.tabWidget.CurrentIndex()
+	mw.openGist(id1)
+	index1 := currentIndex + 1
+	mw.openGist(id2)
+	index2 := currentIndex + 2
+
+	if mw.tabIDFromIndex(999) != "" {
+		t.Errorf("mw.tabIDFromIndex(%d) = %s, want empty string", 999, mw.tabIDFromIndex(999))
+	}
+
+	if mw.tabIDFromIndex(index1) != id1 {
+		t.Errorf("mw.tabIDFromIndex(%d) = %s, want %s", index1, mw.tabIDFromIndex(index1), id1)
+	}
+
+	if mw.tabIDFromIndex(index2) != id2 {
+		t.Errorf("mw.tabIDFromIndex(%d) = %s, want %s", index2, mw.tabIDFromIndex(index2), id2)
 	}
 
 	return true

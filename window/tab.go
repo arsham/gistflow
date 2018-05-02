@@ -8,10 +8,12 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+// Tab is a widget shown on the QTabWidget.
 type Tab struct {
 	widgets.QTabWidget
 
-	_        func() `constructor:"init"`
+	_ func() `constructor:"init"`
+
 	textEdit *widgets.QPlainTextEdit
 }
 

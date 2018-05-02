@@ -9,12 +9,10 @@ import (
 )
 
 func TestTabCreation(t *testing.T) {
-	tRunner.Run(func() {
-		testViewGistTab(t)
-	})
+	tRunner.Run(func() { testTabCreation(t) })
 }
 
-func testViewGistTab(t *testing.T) {
+func testTabCreation(t *testing.T) {
 	name := "test"
 	g := &tabGist{
 		id:      "uWIkJYdkFuVwYcyy",
