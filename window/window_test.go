@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/therecipe/qt/gui"
+
 	"github.com/therecipe/qt/testlib"
 
 	"github.com/arsham/gisty/gist"
@@ -49,9 +51,11 @@ func TestMainWindow(t *testing.T) {
 			{"testWindowCloseTab", testWindowCloseTab},
 			{"testOpeningGistTwice", testOpeningGistTwice},
 			{"testRemoveOpenTab", testRemoveOpenTab},
-			{"testTabIdFromIndex", testTabIdFromIndex},
+			{"testTabIDFromIndex", testTabIDFromIndex},
 			{"testWindowStartupFocus", testWindowStartupFocus},
 			{"testTypingOnListView", testTypingOnListView},
+			{"testSwitchTabs", testSwitchTabs},
+			{"testMovingTabs", testMovingTabs},
 		}
 		for _, tc := range tcs {
 			if !tc.f(t) {
@@ -178,6 +182,9 @@ func testWindowStartupWidgets(t *testing.T) bool {
 	if mw.tabWidget == nil {
 		t.Error("mw.tabWidget = nil, want *widgets.QTabWidget")
 		return false
+	}
+	if !mw.tabWidget.IsMovable() {
+		t.Error("mw.tabWidget is not movable")
 	}
 	if mw.tabGistList == nil {
 		t.Error("mw.tabGistList = nil, want []*tabGist")
@@ -874,7 +881,7 @@ func testRemoveOpenTab(t *testing.T) bool {
 	return true
 }
 
-func testTabIdFromIndex(t *testing.T) bool {
+func testTabIDFromIndex(t *testing.T) bool {
 	var (
 		name = "test"
 		id1  = "mbzsNwJS"
@@ -983,6 +990,117 @@ func testTypingOnListView(t *testing.T) bool {
 		if mw.userInput.Text() != tc.want {
 			t.Errorf("mw.userInput.Text() = `%s`, want `%s`", mw.userInput.Text(), tc.want)
 		}
+	}
+
+	return true
+}
+
+func testSwitchTabs(t *testing.T) bool {
+	var name = "test"
+	g1 := &tabGist{
+		id:      "uWIkJYdkFuVwYcyy",
+		label:   "LpqrRCgBBYY",
+		content: "fLGLysiOuxReut\nASUonvyd",
+	}
+	g2 := &tabGist{
+		id:      "FJsPzPqhI",
+		label:   "bsDmGRE",
+		content: "KuiIIVYnCKycPPkXLibh",
+	}
+
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
+	mw.setupUI()
+	mw.setupInteractions()
+	app.SetActiveWindow(mw.window)
+	mw.show()
+
+	leftTab := NewTab(mw.tabWidget)
+	leftTab.showGist(mw.tabWidget, g1)
+	rightTab := NewTab(mw.tabWidget)
+	rightTab.showGist(mw.tabWidget, g2)
+
+	leftIndex := mw.tabWidget.IndexOf(leftTab)
+	rightIndex := mw.tabWidget.IndexOf(rightTab)
+	if leftIndex > rightIndex {
+		leftIndex, rightIndex = rightIndex, leftIndex
+	}
+	mw.tabWidget.SetCurrentIndex(rightIndex)
+	mw.tabWidget.SetFocus2()
+
+	event := gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageUp), core.Qt__ControlModifier, "", false, 1)
+	mw.tabWidget.KeyPressEvent(event)
+
+	event = gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageDown), core.Qt__ControlModifier, "", false, 1)
+	mw.tabWidget.KeyPressEvent(event)
+	if mw.tabWidget.CurrentIndex() != rightIndex {
+		t.Errorf("mw.tabWidget.CurrentIndex() = %d, want %d", mw.tabWidget.CurrentIndex(), rightIndex)
+	}
+
+	return true
+
+}
+
+func testMovingTabs(t *testing.T) bool {
+	var name = "test"
+	g1 := &tabGist{
+		id:      "uWIkJYdkFuVwYcyy",
+		label:   "LpqrRCgBBYY",
+		content: "fLGLysiOuxReut\nASUonvyd",
+	}
+	g2 := &tabGist{
+		id:      "FJsPzPqhI",
+		label:   "bsDmGRE",
+		content: "KuiIIVYnCKycPPkXLibh",
+	}
+
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
+	mw.setupUI()
+	mw.setupInteractions()
+	app.SetActiveWindow(mw.window)
+	mw.show()
+
+	leftTab := NewTab(mw.tabWidget)
+	leftTab.showGist(mw.tabWidget, g1)
+	rightTab := NewTab(mw.tabWidget)
+	rightTab.showGist(mw.tabWidget, g2)
+
+	leftIndex := mw.tabWidget.IndexOf(leftTab)
+	rightIndex := mw.tabWidget.IndexOf(rightTab)
+	if leftIndex > rightIndex {
+		// I just want to position them properly.
+		leftIndex, rightIndex = rightIndex, leftIndex
+		leftTab, rightTab = rightTab, leftTab
+	}
+	mw.tabWidget.SetCurrentIndex(rightIndex)
+	mw.tabWidget.SetFocus2()
+
+	event := gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageUp), core.Qt__ControlModifier+core.Qt__ShiftModifier, "", false, 1)
+	mw.tabWidget.KeyPressEvent(event)
+	if mw.tabWidget.IndexOf(rightTab) != leftIndex {
+		t.Errorf("mw.tabWidget.IndexOf(rightTab) = %d, want %d", mw.tabWidget.IndexOf(rightTab), leftIndex)
+	}
+	if mw.tabWidget.CurrentWidget().Pointer() != rightTab.Pointer() {
+		t.Error("focus is still on leftTab, want rightTab")
+	}
+
+	// now we are swichng back
+	event = gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageDown), core.Qt__ControlModifier+core.Qt__ShiftModifier, "", false, 1)
+	mw.tabWidget.KeyPressEvent(event)
+	if mw.tabWidget.IndexOf(rightTab) != rightIndex {
+		t.Errorf("mw.tabWidget.IndexOf(rightTab) = %d, want %d", mw.tabWidget.IndexOf(rightTab), rightIndex)
+	}
+	if mw.tabWidget.CurrentWidget().Pointer() != rightTab.Pointer() {
+		t.Error("focus is still on leftTab, want rightTab")
 	}
 
 	return true

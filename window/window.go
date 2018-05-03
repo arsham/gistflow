@@ -85,6 +85,7 @@ func (m *MainWindow) setupUI() (err error) {
 	m.tabWidget = widgets.NewQTabWidget(centralWidget)
 	m.tabWidget.SetObjectName("tabWidget")
 	m.tabWidget.SetTabsClosable(true)
+	m.tabWidget.SetMovable(true)
 	tab1 := widgets.NewQWidget(m.tabWidget, core.Qt__Widget)
 	tab1.SetObjectName("Untitled")
 	m.tabWidget.AddTab(tab1, "Untitled")
@@ -256,6 +257,32 @@ func (m *MainWindow) setupInteractions() {
 		}
 	})
 
+	m.tabWidget.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
+		if event.Modifiers() == core.Qt__ControlModifier {
+			index := m.tabWidget.CurrentIndex()
+			switch event.Key() {
+			case int(core.Qt__Key_PageDown):
+				m.tabWidget.SetCurrentIndex(index + 1)
+			case int(core.Qt__Key_PageUp):
+				m.tabWidget.SetCurrentIndex(index - 1)
+			}
+		}
+
+		if event.Modifiers() == core.Qt__ShiftModifier+core.Qt__ControlModifier {
+			widget := m.tabWidget.CurrentWidget()
+			index := m.tabWidget.CurrentIndex()
+			text := m.tabWidget.TabText(index)
+			switch event.Key() {
+			case int(core.Qt__Key_PageDown):
+				m.tabWidget.RemoveTab(index)
+				m.tabWidget.InsertTab(index+1, widget, text)
+			case int(core.Qt__Key_PageUp):
+				m.tabWidget.RemoveTab(index)
+				m.tabWidget.InsertTab(index-1, widget, text)
+			}
+			m.tabWidget.SetCurrentWidget(widget)
+		}
+	})
 }
 
 func (m *MainWindow) openGist(id string) error {
