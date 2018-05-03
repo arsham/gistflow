@@ -17,8 +17,6 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-// https://github.com/therecipe/advanced-examples/tree/master/test
-
 const (
 	mainWindowGeometry = "mainWindowGeometry"
 )
@@ -59,8 +57,8 @@ func (m *MainWindow) Display() error {
 	if err != nil {
 		return err
 	}
-	m.window.Show()
-	// use singleShot
+	m.show()
+	// TODO: use singleShot
 	m.setModel()
 	m.settings = getSettings(m.ConfName)
 	m.loadSettings()
@@ -91,6 +89,7 @@ func (m *MainWindow) setupUI() (err error) {
 	m.tabWidget.AddTab(tab1, "Untitled")
 	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 	m.userInput = widgets.NewQLineEdit(m.window)
+	m.userInput.SetObjectName("userInput")
 	vLayout.AddWidget(m.userInput, 0, 0)
 	vLayout.AddWidget(m.tabWidget, 0, 0)
 	m.window.SetCentralWidget(centralWidget)
@@ -98,28 +97,28 @@ func (m *MainWindow) setupUI() (err error) {
 	m.tabWidget.ConnectTabCloseRequested(m.closeTab)
 
 	m.menubar = NewMenuBar(m.window)
-	m.menubar.SetObjectName("Menubar")
+	m.menubar.SetObjectName("menubar")
 	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
 	m.window.SetMenuBar(m.menubar)
 
 	m.statusbar = widgets.NewQStatusBar(m.window)
-	m.statusbar.SetObjectName("Statusbar")
+	m.statusbar.SetObjectName("statusbar")
 	m.window.SetStatusBar(m.statusbar)
 
 	m.dockWidget = widgets.NewQDockWidget("Gists", m.window, 0)
-	m.dockWidget.SetObjectName("DockWidget")
+	m.dockWidget.SetObjectName("dockWidget")
 	m.dockWidget.SetMinimumSize(core.NewQSize2(100, 130))
 	m.dockWidget.SetFeatures(widgets.QDockWidget__DockWidgetMovable | widgets.QDockWidget__DockWidgetClosable)
 	m.dockWidget.SetAllowedAreas(core.Qt__LeftDockWidgetArea | core.Qt__RightDockWidgetArea)
 
 	widgetContent := widgets.NewQWidget(m.dockWidget, core.Qt__Widget)
-	widgetContent.SetObjectName("DockWidgetContents")
+	widgetContent.SetObjectName("dockWidgetContents")
 	vLayout2 := widgets.NewQVBoxLayout2(widgetContent)
 	vLayout2.SetObjectName("verticalLayout_2")
 	vLayout2.SetContentsMargins(0, 0, 0, 0)
 	vLayout2.SetSpacing(0)
 	m.listView = widgets.NewQListView(widgetContent)
-	m.listView.SetObjectName("ListView")
+	m.listView.SetObjectName("listView")
 	vLayout2.AddWidget(m.listView, 0, 0)
 	m.dockWidget.SetWidget(m.listView)
 
@@ -134,12 +133,16 @@ func (m *MainWindow) setupUI() (err error) {
 	m.sysTray.SetContextMenu(m.menubar.optionsMenu)
 
 	m.window.SetWindowIcon(m.icon)
-	// m.window.SetTabOrder(m.userInput, m.listView)
-
 	m.menubar.quitAction.ConnectTriggered(func(bool) {
 		m.app.Quit()
 	})
+
 	return nil
+}
+
+func (m *MainWindow) show() {
+	m.userInput.SetFocus2()
+	m.window.Show()
 }
 
 func (m *MainWindow) setModel() {
@@ -179,7 +182,7 @@ func getSettings(name string) *core.QSettings {
 }
 func (m *MainWindow) populate() {
 	var foundOne bool
-	// go goroutine
+	// TODO: populate in background.
 	for item := range m.GistService.Iter() {
 		foundOne = true
 		var g = NewGistItem(nil)
@@ -280,29 +283,4 @@ func (m *MainWindow) closeTab(index int) {
 	id := m.tabIDFromIndex(index)
 	m.tabWidget.RemoveTab(index)
 	delete(m.tabGistList, id)
-}
-
-func (m *MainWindow) gistDialog(index *core.QModelIndex) error {
-	// widgets.NewQDialogFromPointer(dialog.Pointer()).SetModal(true)
-	// ok := ui.ok
-	// ok.ConnectClicked(func(bool) {
-	// 	dialog.Close()
-	// })
-	// clipboard := ui.clipboard
-	// clipboard.ConnectClicked(func(bool) {
-	// 	m.app.Clipboard().SetText(content, gui.QClipboard__Clipboard)
-	// 	m.sysTray.ShowMessage("Info", "Gist has been copied to clipboard", widgets.QSystemTrayIcon__Information, 4000)
-	// })
-	// browser := ui.browser
-	// browser.ConnectClicked(func(bool) {
-	// 	gui.QDesktopServices_OpenUrl(core.NewQUrl3(url, 0))
-	// })
-
-	// dialog.Show()
-	// dialog.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
-	// 	if event.Key() == int(core.Qt__Key_Escape) {
-	// 		dialog.Close()
-	// 	}
-	// })
-	return nil
 }

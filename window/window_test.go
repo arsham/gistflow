@@ -35,7 +35,6 @@ func TestMainWindow(t *testing.T) {
 	}
 	tRunner.Run(func() {
 		tcs := []testCase{
-			// testLoadingState,
 			{"testWindowStartupWidgets", testWindowStartupWidgets},
 			{"testWindowModel", testWindowModel},
 			{"testPopulateError", testPopulateError},
@@ -50,6 +49,7 @@ func TestMainWindow(t *testing.T) {
 			{"testOpeningGistTwice", testOpeningGistTwice},
 			{"testRemoveOpenTab", testRemoveOpenTab},
 			{"testTabIdFromIndex", testTabIdFromIndex},
+			{"testWindowStartupFocus", testWindowStartupFocus},
 		}
 		for _, tc := range tcs {
 			if !tc.f(t) {
@@ -369,7 +369,7 @@ func testListViewKeys(t *testing.T) bool {
 	mw.setupInteractions()
 
 	app.SetActiveWindow(mw.window)
-	mw.window.Show()
+	mw.show()
 
 	event := testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
@@ -511,7 +511,7 @@ func testClickViewGist(t *testing.T) bool {
 	mw.setupInteractions()
 
 	app.SetActiveWindow(mw.window)
-	mw.window.Show()
+	mw.show()
 
 	var errCalled bool
 	mw.logger = &logger{
@@ -519,7 +519,7 @@ func testClickViewGist(t *testing.T) bool {
 		warningFunc: func(str string) { errCalled = true },
 	}
 
-	// with no selection, it should error because there is no item selected,
+	// with no selection, it should error because there is no item selectedisd,
 	// hence no id.
 	event := testlib.NewQTestEventList()
 	event.AddKeyRelease(core.Qt__Key_Down, core.Qt__NoModifier, -1)
@@ -562,7 +562,7 @@ func testExchangingFocus(t *testing.T) bool {
 	mw.setupUI()
 	mw.setupInteractions()
 	app.SetActiveWindow(mw.window)
-	mw.window.Show()
+	mw.show()
 
 	tcs := []core.Qt__Key{
 		core.Qt__Key_A,
@@ -630,7 +630,7 @@ func testWindowCloseTab(t *testing.T) bool {
 	defer cleanup()
 	mw.setupUI()
 	app.SetActiveWindow(mw.window)
-	mw.window.Show()
+	mw.show()
 
 	tab := NewTab(mw.tabWidget)
 	if tab == nil {
@@ -834,6 +834,22 @@ func testTabIdFromIndex(t *testing.T) bool {
 
 	if mw.tabIDFromIndex(index2) != id2 {
 		t.Errorf("mw.tabIDFromIndex(%d) = %s, want %s", index2, mw.tabIDFromIndex(index2), id2)
+	}
+
+	return true
+}
+
+func testWindowStartupFocus(t *testing.T) bool {
+	name := "test"
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+
+	mw.setupUI()
+	app.SetActiveWindow(mw.window)
+	mw.show()
+
+	if !mw.userInput.HasFocus() {
+		t.Errorf("focus is on %s, want %s", app.FocusWidget().ObjectName(), mw.userInput.ObjectName())
 	}
 
 	return true
