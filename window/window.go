@@ -90,6 +90,7 @@ func (m *MainWindow) setupUI() (err error) {
 	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 	m.userInput = widgets.NewQLineEdit(m.window)
 	m.userInput.SetObjectName("userInput")
+	m.userInput.SetClearButtonEnabled(true)
 	vLayout.AddWidget(m.userInput, 0, 0)
 	vLayout.AddWidget(m.tabWidget, 0, 0)
 	m.window.SetCentralWidget(centralWidget)
@@ -232,7 +233,7 @@ func (m *MainWindow) setupInteractions() {
 			char := event.Text()
 			for _, c := range char {
 				if unicode.IsPrint(c) {
-					// m.userInput.SetText(m.userInput.Text() + char)
+					m.userInput.SetText(m.userInput.Text() + char)
 					m.userInput.SetFocus2()
 				}
 				break

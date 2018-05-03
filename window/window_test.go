@@ -50,6 +50,7 @@ func TestMainWindow(t *testing.T) {
 			{"testRemoveOpenTab", testRemoveOpenTab},
 			{"testTabIdFromIndex", testTabIdFromIndex},
 			{"testWindowStartupFocus", testWindowStartupFocus},
+			{"testTypingOnListView", testTypingOnListView},
 		}
 		for _, tc := range tcs {
 			if !tc.f(t) {
@@ -179,6 +180,10 @@ func testWindowStartupWidgets(t *testing.T) bool {
 	if mw.userInput == nil {
 		t.Error("mw.userInput = nil, want *widgets.QDockWidget")
 		return false
+	}
+
+	if !mw.userInput.IsClearButtonEnabled() {
+		t.Error("userInput doesn't have a clear button")
 	}
 	return true
 }
@@ -850,6 +855,43 @@ func testWindowStartupFocus(t *testing.T) bool {
 
 	if !mw.userInput.HasFocus() {
 		t.Errorf("focus is on %s, want %s", app.FocusWidget().ObjectName(), mw.userInput.ObjectName())
+	}
+
+	return true
+}
+
+func testTypingOnListView(t *testing.T) bool {
+	name := "test"
+	_, mw, cleanup := setup(t, name, nil, 0)
+	defer cleanup()
+
+	mw.setupUI()
+	mw.setupInteractions()
+
+	tcs := []struct {
+		prefix string
+		input  string
+		want   string
+	}{
+		{"", "a", "a"},
+		{"", ":", ":"},
+		{"", "-", "-"},
+		{"a", "a", "aa"},
+		{"a", ":", "a:"},
+		{"a", "-", "a-"},
+		{"a ", "a", "a a"},
+		{"a ", ":", "a :"},
+		{"a ", "-", "a -"},
+	}
+	for _, tc := range tcs {
+		mw.userInput.SetText(tc.prefix)
+		mw.listView.SetFocus2()
+		event := testlib.NewQTestEventList()
+		event.AddKeyRelease2(tc.input, core.Qt__NoModifier, -1)
+		event.Simulate(mw.listView)
+		if mw.userInput.Text() != tc.want {
+			t.Errorf("mw.userInput.Text() = `%s`, want `%s`", mw.userInput.Text(), tc.want)
+		}
 	}
 
 	return true
