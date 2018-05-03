@@ -97,8 +97,6 @@ func (m *MainWindow) setupUI() (err error) {
 	vLayout.AddWidget(m.tabWidget, 0, 0)
 	m.window.SetCentralWidget(centralWidget)
 
-	m.tabWidget.ConnectTabCloseRequested(m.closeTab)
-
 	m.menubar = NewMenuBar(m.window)
 	m.menubar.SetObjectName("menubar")
 	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
@@ -258,31 +256,39 @@ func (m *MainWindow) setupInteractions() {
 	})
 
 	m.tabWidget.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
+		// Closing tab
 		if event.Modifiers() == core.Qt__ControlModifier {
 			index := m.tabWidget.CurrentIndex()
-			switch event.Key() {
-			case int(core.Qt__Key_PageDown):
+
+			switch core.Qt__Key(event.Key()) {
+			case core.Qt__Key_PageDown:
 				m.tabWidget.SetCurrentIndex(index + 1)
-			case int(core.Qt__Key_PageUp):
+			case core.Qt__Key_PageUp:
 				m.tabWidget.SetCurrentIndex(index - 1)
+			case core.Qt__Key_W:
+				m.tabWidget.TabCloseRequested(index)
 			}
 		}
 
+		// Moving left and right
 		if event.Modifiers() == core.Qt__ShiftModifier+core.Qt__ControlModifier {
 			widget := m.tabWidget.CurrentWidget()
 			index := m.tabWidget.CurrentIndex()
 			text := m.tabWidget.TabText(index)
-			switch event.Key() {
-			case int(core.Qt__Key_PageDown):
+
+			switch core.Qt__Key(event.Key()) {
+			case core.Qt__Key_PageDown:
 				m.tabWidget.RemoveTab(index)
 				m.tabWidget.InsertTab(index+1, widget, text)
-			case int(core.Qt__Key_PageUp):
+			case core.Qt__Key_PageUp:
 				m.tabWidget.RemoveTab(index)
 				m.tabWidget.InsertTab(index-1, widget, text)
 			}
 			m.tabWidget.SetCurrentWidget(widget)
 		}
+
 	})
+	m.tabWidget.ConnectTabCloseRequested(m.closeTab)
 }
 
 func (m *MainWindow) openGist(id string) error {
