@@ -207,7 +207,14 @@ func (m *MainWindow) setupInteractions() {
 		}
 		m.userInput.KeyPressEventDefault(event)
 	})
-	// listView.ConnectDoubleClicked(openGist)
+
+	m.listView.ConnectDoubleClicked(func(*core.QModelIndex) {
+		index := m.listView.CurrentIndex()
+		err := m.openGist(index.Data(GistID).ToString())
+		if err != nil {
+			m.logger.error(err.Error())
+		}
+	})
 
 	m.listView.ConnectKeyReleaseEvent(func(event *gui.QKeyEvent) {
 		switch core.Qt__Key(event.Key()) {
