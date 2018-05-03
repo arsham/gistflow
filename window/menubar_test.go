@@ -17,6 +17,7 @@ func TestMenubar(t *testing.T) {
 		tcs := map[string]func(*testing.T) bool{
 			"testMenuBar": testMenuBar,
 			"testCtrlQ":   testCtrlQ,
+			"testToggle":  testToggle,
 		}
 		for name, tc := range tcs {
 			if !tc(t) {
@@ -73,6 +74,34 @@ func testCtrlQ(t *testing.T) bool {
 
 	if !called {
 		t.Error("Ctrl+Q didn't trigger the quitAction")
+	}
+	return true
+}
+
+func testToggle(t *testing.T) bool {
+	name := "test"
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
+
+	mw.setupUI()
+	mw.setupInteractions()
+	app.SetActiveWindow(mw.window)
+	mw.window.Show()
+
+	if mw.window.IsHidden() {
+		t.Error("window is not shown")
+	}
+	mw.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if !mw.window.IsHidden() {
+		t.Error("window is not hidden")
+	}
+	mw.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if mw.window.IsHidden() {
+		t.Error("window is not shown")
 	}
 	return true
 }

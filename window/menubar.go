@@ -26,13 +26,4 @@ func (m *menuBar) init() {
 	})
 
 	m.quitAction.SetShortcut(gui.QKeySequence_FromString("Ctrl+Q", 0))
-	// mainMenu := m.mainMenu()
-	// m.sysTray.ConnectActivated(func(widgets.QSystemTrayIcon__ActivationReason) {
-	//  if m.dialog.IsVisible() {
-	//      m.dialog.Hide()
-	//  } else {
-	//      m.dialog.Show()
-	//  }
-	// })
-
 }

@@ -247,6 +247,15 @@ func (m *MainWindow) setupInteractions() {
 			}
 		}
 	})
+
+	m.sysTray.ConnectActivated(func(widgets.QSystemTrayIcon__ActivationReason) {
+		if m.window.IsVisible() {
+			m.window.Hide()
+		} else {
+			m.window.Show()
+		}
+	})
+
 }
 
 func (m *MainWindow) openGist(id string) error {
