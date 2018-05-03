@@ -7,6 +7,7 @@ package window
 
 import (
 	"os"
+	"path"
 	"strings"
 	"unicode"
 
@@ -69,10 +70,10 @@ func (m *MainWindow) Display() error {
 }
 
 func (m *MainWindow) setupUI() (err error) {
+	m.window = widgets.NewQMainWindow(nil, 0)
 	if m.logger == nil {
 		m.logger = messagebox(m.window)
 	}
-	m.window = widgets.NewQMainWindow(nil, 0)
 	m.window.SetGeometry(core.NewQRect4(0, 0, 1043, 600))
 	centralWidget := widgets.NewQWidget(m.window, core.Qt__Widget)
 	vLayout := widgets.NewQVBoxLayout2(centralWidget)
@@ -183,6 +184,12 @@ func getSettings(name string) *core.QSettings {
 }
 func (m *MainWindow) populate() {
 	var foundOne bool
+	if m.GistService.Logger == nil {
+		m.GistService.Logger = m.logger
+	}
+	if m.GistService.CacheDir == "" {
+		m.GistService.CacheDir = m.cacheDir()
+	}
 	// TODO: populate in background.
 	for item := range m.GistService.Iter() {
 		foundOne = true
@@ -193,7 +200,7 @@ func (m *MainWindow) populate() {
 		m.model.AddGist(g)
 	}
 	if !foundOne {
-		m.logger.error("didn't find any gists")
+		m.logger.Error("didn't find any gists")
 	}
 }
 
@@ -213,7 +220,7 @@ func (m *MainWindow) setupInteractions() {
 		index := m.listView.CurrentIndex()
 		err := m.openGist(index.Data(GistID).ToString())
 		if err != nil {
-			m.logger.error(err.Error())
+			m.logger.Error(err.Error())
 		}
 	})
 
@@ -223,7 +230,7 @@ func (m *MainWindow) setupInteractions() {
 			index := m.listView.CurrentIndex()
 			err := m.openGist(index.Data(GistID).ToString())
 			if err != nil {
-				m.logger.error(err.Error())
+				m.logger.Error(err.Error())
 			}
 		case core.Qt__Key_Delete, core.Qt__Key_Space:
 			fallthrough
@@ -291,4 +298,15 @@ func (m *MainWindow) closeTab(index int) {
 	id := m.tabIDFromIndex(index)
 	m.tabWidget.RemoveTab(index)
 	delete(m.tabGistList, id)
+}
+
+func (m *MainWindow) cacheDir() string {
+	loc := core.QStandardPaths_StandardLocations(core.QStandardPaths__GenericCacheLocation)[0]
+	cacheDir := path.Join(loc, m.ConfName)
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		if err := os.Mkdir(cacheDir, 0740); err != nil {
+			m.logger.Warningf("Creating cache dir: %s", err)
+		}
+	}
+	return cacheDir
 }

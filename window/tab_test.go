@@ -20,7 +20,11 @@ func testTabCreation(t *testing.T) {
 		content: "fLGLysiOuxReut\nASUonvyd",
 	}
 
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	defer cleanup()
 	mw.setupUI()
 

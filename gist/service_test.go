@@ -5,9 +5,12 @@
 package gist_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -136,8 +139,7 @@ func TestGistGetError(t *testing.T) {
 		Token:    "sometoken",
 		API:      ts.URL,
 	}
-	_, err := s.Get("")
-	if err == nil {
+	if _, err := s.Get(""); err == nil {
 		t.Error("g.Get(): err = nil, want error")
 	}
 
@@ -165,8 +167,79 @@ func TestGistGetNotFound(t *testing.T) {
 		API:      ts.URL,
 	}
 
-	_, err := s.Get("someID")
-	if err == nil {
+	if _, err := s.Get("someID"); err == nil {
 		t.Error("g.Get(): err = nil, want error", err)
+	}
+}
+
+func TestLoadFromCache(t *testing.T) {
+	var (
+		calls     = 0
+		currentID string
+		id1       = "NPrUmNnyLrgFcwIghuu"
+		id2       = "DFxIrjJLcneZbqcpR"
+	)
+
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	gists := map[string]gist.ResponseGist{
+		id1: gist.ResponseGist{
+			Files: map[string]gist.ResponseFile{
+				"file1": gist.ResponseFile{"WCLwqKzLvzg"},
+			},
+		},
+		id2: gist.ResponseGist{
+			Files: map[string]gist.ResponseFile{
+				"file1": gist.ResponseFile{"TLsplcHpevo"},
+				"file2": gist.ResponseFile{"mbcFO"},
+			},
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		resp, err := json.Marshal(gists[currentID])
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.Write(resp)
+	}))
+	defer ts.Close()
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "sometoken",
+		API:      ts.URL,
+		CacheDir: loc,
+	}
+	currentID = id1
+	if _, err := s.Get(currentID); err != nil {
+		t.Error("g.Get(): err = nil, want error")
+	}
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1", calls)
+	}
+
+	currentID = id2
+	r2, err := s.Get(currentID)
+	if err != nil {
+		t.Error("g.Get(): err = nil, want error")
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
+	}
+
+	currentID = id2
+	r3, err := s.Get(currentID)
+	if err != nil {
+		t.Error("g.Get(): err = nil, want error")
+	}
+	if !reflect.DeepEqual(r2, r3) {
+		t.Errorf("r2 = %v, want %v", r2, r3)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
 	}
 }

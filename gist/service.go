@@ -12,15 +12,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 )
+
+type boxLogger interface {
+	Warning(msg string)
+	Warningf(format string, a ...interface{})
+}
 
 // Service holds the information about the user.
 type Service struct {
 	Username string
 	Token    string
 	API      string
+	CacheDir string
+	Logger   boxLogger
 }
 
 func (s *Service) api() string {
@@ -96,8 +105,23 @@ func (s *Service) Iter() chan Response {
 
 // Get gets a gist item by its id.
 func (s *Service) Get(id string) (ResponseGist, error) {
+	var g ResponseGist
 	if id == "" {
 		return ResponseGist{}, ErrEmptyID
+	}
+
+	body, err := fromCache(s.CacheDir, id)
+	switch err {
+	case nil, ErrCacheNotExists, ErrEmptyCacheLoc:
+	default:
+		s.Logger.Warningf("reading from cache: %s", err.Error())
+	}
+
+	if body != nil {
+		if err := json.Unmarshal(body, &g); err == nil {
+			return g, nil
+		}
+		s.Logger.Warning(err.Error())
 	}
 
 	url := fmt.Sprintf("%s/gists/%s?access_token=%s", s.api(), id, s.Token)
@@ -110,15 +134,45 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 	if r.StatusCode == http.StatusNotFound {
 		return ResponseGist{}, ErrGistNotFound
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err = ioutil.ReadAll(r.Body)
 	if err != nil {
 		return ResponseGist{}, err
 	}
 
-	var g ResponseGist
+	if err := saveCache(s.CacheDir, id, body); err != nil {
+		s.Logger.Warning(err.Error())
+	}
+
 	err = json.Unmarshal(body, &g)
 	if err != nil {
 		return ResponseGist{}, err
 	}
 	return g, nil
+}
+
+func fromCache(location, id string) ([]byte, error) {
+	if location == "" {
+		return nil, ErrEmptyCacheLoc
+	}
+	name := path.Join(location, id)
+	file, err := os.Open(name)
+	if err != nil {
+		return nil, ErrCacheNotExists
+	}
+	defer file.Close()
+	return ioutil.ReadAll(file)
+}
+
+func saveCache(location, id string, contents []byte) error {
+	if location == "" {
+		return ErrEmptyCacheLoc
+	}
+	name := path.Join(location, id)
+	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0640)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.Write(contents)
+	return err
 }

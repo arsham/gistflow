@@ -6,13 +6,17 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/arsham/gisty/gist"
 	"github.com/arsham/gisty/window"
 )
 
 func main() {
-	token := "4fe4218d35fa707d9a964142bd120ea5d37428e3"
+	token := os.Getenv("GISTY_TOKEN")
+	if token == "" {
+		log.Fatal("token cannot be empty")
+	}
 	gs := gist.Service{
 		Username: "arsham",
 		Token:    token,

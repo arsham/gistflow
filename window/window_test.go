@@ -7,6 +7,7 @@ package window
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -66,11 +67,11 @@ type logger struct {
 	warningFunc func(string)
 }
 
-func (l logger) error(msg string)                         { l.errorFunc(msg) }
-func (l logger) warning(msg string)                       { l.warningFunc(msg) }
-func (l logger) warningf(format string, a ...interface{}) { l.warning(fmt.Sprintf(format, a...)) }
+func (l logger) Error(msg string)                         { l.errorFunc(msg) }
+func (l logger) Warning(msg string)                       { l.warningFunc(msg) }
+func (l logger) Warningf(format string, a ...interface{}) { l.Warning(fmt.Sprintf(format, a...)) }
 
-func setup(t *testing.T, name string, input []gist.Response, answers int) (*httptest.Server, *MainWindow, func()) {
+func setup(t *testing.T, name string, input []gist.Response, answers int) (*httptest.Server, *MainWindow, func(), error) {
 	var counter int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if counter >= answers {
@@ -86,14 +87,25 @@ func setup(t *testing.T, name string, input []gist.Response, answers int) (*http
 		w.Write(b)
 	}))
 	l := &logger{
-		errorFunc:   func(msg string) { fmt.Println("errorFunc:", msg) },
-		warningFunc: func(msg string) { fmt.Println("warningFunc:", msg) },
+		errorFunc:   func(string) {},
+		warningFunc: func(string) {},
 	}
+	l2 := &logger{
+		errorFunc:   func(string) {},
+		warningFunc: func(string) {},
+	}
+	cacheDir, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	mw := &MainWindow{
 		GistService: gist.Service{
 			Username: "arsham",
 			Token:    "token",
 			API:      ts.URL,
+			CacheDir: cacheDir,
+			Logger:   l2,
 		},
 		app:      app,
 		ConfName: name,
@@ -104,13 +116,18 @@ func setup(t *testing.T, name string, input []gist.Response, answers int) (*http
 		mw.window.Hide()
 		s := getSettings(name)
 		s.Clear()
-	}
+		os.RemoveAll(cacheDir)
+	}, nil
 }
 
 // testing vanilla setup
 func testWindowStartupWidgets(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 	oldLogger := mw.logger
 	mw.logger = nil
@@ -190,7 +207,11 @@ func testWindowStartupWidgets(t *testing.T) bool {
 
 func testWindowModel(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 	mw.setupUI()
 	mw.setModel()
@@ -220,25 +241,42 @@ func testWindowModel(t *testing.T) bool {
 }
 
 func testPopulateError(t *testing.T) bool {
-	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	var (
+		name   = "test"
+		called bool
+	)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	mw.GistService.Logger = nil
 	defer cleanup()
-
-	var called bool
 	mw.setupUI()
 	mw.setModel()
+
 	mw.logger = &logger{
 		errorFunc: func(str string) {
 			called = true
 		},
+		warningFunc: func(str string) {},
 	}
+	mw.GistService.CacheDir = ""
 	mw.populate()
+	if mw.GistService.Logger == nil {
+		t.Error("mw.GistService.Logger is not assigned")
+		return false
+	}
 	if c := mw.model.RowCount(nil); c != 0 {
 		t.Errorf("mw.model.RowCount() = %d, want 0", c)
 	}
 	if !called {
 		t.Error("expected an error, didn't register the error")
 	}
+	if mw.GistService.CacheDir == "" {
+		t.Error("mw.GistService.CacheDir is empty")
+	}
+
 	return true
 }
 
@@ -249,7 +287,11 @@ func testPopulate(t *testing.T) bool {
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
-	ts, mw, cleanup := setup(t, name, []gist.Response{gres}, size)
+	ts, mw, cleanup, err := setup(t, name, []gist.Response{gres}, size)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
 
@@ -277,7 +319,11 @@ func testPopulate(t *testing.T) bool {
 
 func testLoadingGeometry(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
@@ -340,7 +386,11 @@ func testFilteringGists(t *testing.T) bool {
 			Description: "666666 BBB 66666",
 		},
 	}
-	_, mw, cleanup := setup(t, name, res, 1)
+	_, mw, cleanup, err := setup(t, name, res, 1)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
@@ -365,7 +415,11 @@ func testListViewKeys(t *testing.T) bool {
 			Description: "666666AAA66666",
 		},
 	}
-	_, mw, cleanup := setup(t, name, res, 10)
+	_, mw, cleanup, err := setup(t, name, res, 10)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
@@ -441,7 +495,11 @@ func testViewGist(t *testing.T) (forward bool) {
 	}))
 	defer gistTs.Close()
 
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 	mw.GistService.API = gistTs.URL
 
@@ -504,10 +562,14 @@ func testClickViewGist(t *testing.T) bool {
 		}
 		w.Write(b)
 	}))
-	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, mw, cleanup := setup(t, name, []gist.Response{gres}, 10)
-	defer cleanup()
 	defer gistTs.Close()
+	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
+	_, mw, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
 
 	mw.setupUI()
 	mw.setModel()
@@ -546,6 +608,8 @@ func testClickViewGist(t *testing.T) bool {
 			t.Error("didn't call for gist")
 		}
 		delete(mw.tabGistList, gres.ID)
+		os.RemoveAll(mw.GistService.CacheDir)
+		os.Mkdir(mw.GistService.CacheDir, 0777)
 	}
 
 	if !called {
@@ -561,7 +625,11 @@ func testExchangingFocus(t *testing.T) bool {
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
-	_, mw, cleanup := setup(t, name, []gist.Response{gres}, 10)
+	_, mw, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
@@ -631,7 +699,11 @@ func testWindowCloseTab(t *testing.T) bool {
 		content: "fLGLysiOuxReut\nASUonvyd",
 	}
 
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 	mw.setupUI()
 	app.SetActiveWindow(mw.window)
@@ -694,9 +766,13 @@ func testOpeningGistTwice(t *testing.T) bool {
 		}
 		w.Write(b)
 	}))
-	_, mw, cleanup := setup(t, name, nil, 0)
-	defer cleanup()
 	defer gistTs.Close()
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
 
 	mw.setupUI()
 	mw.GistService.API = gistTs.URL
@@ -752,9 +828,13 @@ func testRemoveOpenTab(t *testing.T) bool {
 		}
 		w.Write(b)
 	}))
-	_, mw, cleanup := setup(t, name, nil, 0)
-	defer cleanup()
 	defer gistTs.Close()
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
 
 	mw.setupUI()
 	mw.GistService.API = gistTs.URL
@@ -776,8 +856,7 @@ func testRemoveOpenTab(t *testing.T) bool {
 	}
 	mw.openGist(id2)
 	mw.openGist(id3)
-	err := mw.openGist(id1)
-	if err != nil {
+	if err := mw.openGist(id1); err != nil {
 		t.Errorf("mw.openGist(%s) = %v, want nil", id1, mw.openGist(id1))
 	}
 	if len(mw.tabGistList) != currentLen+3 {
@@ -817,9 +896,13 @@ func testTabIdFromIndex(t *testing.T) bool {
 		}
 		w.Write(b)
 	}))
-	_, mw, cleanup := setup(t, name, nil, 0)
-	defer cleanup()
 	defer gistTs.Close()
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	defer cleanup()
 
 	mw.setupUI()
 	mw.GistService.API = gistTs.URL
@@ -846,7 +929,11 @@ func testTabIdFromIndex(t *testing.T) bool {
 
 func testWindowStartupFocus(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
@@ -862,7 +949,11 @@ func testWindowStartupFocus(t *testing.T) bool {
 
 func testTypingOnListView(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup := setup(t, name, nil, 0)
+	_, mw, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
 	defer cleanup()
 
 	mw.setupUI()
