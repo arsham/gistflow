@@ -15,6 +15,7 @@ type Tab struct {
 	_ func() `constructor:"init"`
 
 	textEdit *widgets.QPlainTextEdit
+	gist     *tabGist
 }
 
 func (t *Tab) init() {
@@ -22,6 +23,7 @@ func (t *Tab) init() {
 	t.SetLayout(layout)
 	t.textEdit = widgets.NewQPlainTextEdit(t)
 	t.textEdit.SetObjectName("content")
+
 	layout.AddWidget(t.textEdit, 0, 0)
 }
 
@@ -29,4 +31,13 @@ func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *tabGist) {
 	t.textEdit.SetPlainText(g.content)
 	tabWidget.AddTab(t, g.label)
 	tabWidget.SetCurrentWidget(t)
+	t.gist = g
+}
+
+func (t Tab) content() string {
+	return t.gist.content
+}
+
+func (t Tab) url() string {
+	return t.gist.url
 }

@@ -16,6 +16,7 @@ type Response struct {
 // ResponseGist represents one gist.
 type ResponseGist struct {
 	Files map[string]ResponseFile `json:"files"`
+	URL   string                  `json:"url"`
 }
 
 // ResponseFile is one file in a ResponseGist.

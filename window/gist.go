@@ -19,6 +19,7 @@ type tabGist struct {
 	id      string
 	label   string
 	content string
+	url     string
 }
 
 type GistModel struct {

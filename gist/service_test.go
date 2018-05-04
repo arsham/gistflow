@@ -206,13 +206,13 @@ func TestLoadFromCache(t *testing.T) {
 	gists := map[string]gist.ResponseGist{
 		id1: gist.ResponseGist{
 			Files: map[string]gist.ResponseFile{
-				"file1": gist.ResponseFile{"WCLwqKzLvzg"},
+				"file1": gist.ResponseFile{Content: "WCLwqKzLvzg"},
 			},
 		},
 		id2: gist.ResponseGist{
 			Files: map[string]gist.ResponseFile{
-				"file1": gist.ResponseFile{"TLsplcHpevo"},
-				"file2": gist.ResponseFile{"mbcFO"},
+				"file1": gist.ResponseFile{Content: "TLsplcHpevo"},
+				"file2": gist.ResponseFile{Content: "mbcFO"},
 			},
 		},
 	}
@@ -232,7 +232,7 @@ func TestLoadFromCache(t *testing.T) {
 		CacheDir: loc,
 	}
 	currentID = id1
-	if _, err := s.Get(currentID); err != nil {
+	if _, err = s.Get(currentID); err != nil {
 		t.Error("g.Get(): err = nil, want error")
 	}
 	if calls != 1 {

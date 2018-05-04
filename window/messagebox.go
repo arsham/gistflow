@@ -11,9 +11,9 @@ type boxLogger interface {
 	Warning(msg string)
 	Warningf(format string, a ...interface{})
 }
-type mb struct{ dialog *widgets.QMainWindow }
+type mb struct{ dialog *MainWindow }
 
-func messagebox(parent *widgets.QMainWindow) *mb { return &mb{parent} }
+func messagebox(parent *MainWindow) *mb { return &mb{parent} }
 func (m mb) Error(msg string) {
 	qmb := widgets.NewQMessageBox(nil)
 	qmb.Critical(m.dialog, "Warning", msg, widgets.QMessageBox__Ok, widgets.QMessageBox__Ok)

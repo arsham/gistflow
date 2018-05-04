@@ -118,13 +118,14 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 	}
 
 	if body != nil {
-		if err := json.Unmarshal(body, &g); err == nil {
+		if err = json.Unmarshal(body, &g); err == nil {
 			return g, nil
 		}
 		s.Logger.Warning(err.Error())
 	}
 
-	url := fmt.Sprintf("%s/gists/%s?access_token=%s", s.api(), id, s.Token)
+	gistURL := fmt.Sprintf("%s/gists/%s", s.api(), id)
+	url := fmt.Sprintf("%s?access_token=%s", gistURL, s.Token)
 	r, err := http.Get(url)
 	if err != nil {
 		return ResponseGist{}, err
@@ -139,7 +140,7 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 		return ResponseGist{}, err
 	}
 
-	if err := saveCache(s.CacheDir, id, body); err != nil {
+	if err = saveCache(s.CacheDir, id, body); err != nil {
 		s.Logger.Warning(err.Error())
 	}
 
@@ -147,6 +148,7 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 	if err != nil {
 		return ResponseGist{}, err
 	}
+	g.URL = gistURL
 	return g, nil
 }
 

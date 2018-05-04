@@ -5,11 +5,11 @@
 package window
 
 import (
+	"testing"
+
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/testlib"
 	"github.com/therecipe/qt/widgets"
-
-	"testing"
 )
 
 func TestMenubar(t *testing.T) {
@@ -31,28 +31,18 @@ func TestMenubar(t *testing.T) {
 func testMenuBar(t *testing.T) bool {
 	parent := widgets.NewQWidget(nil, 0)
 	m := NewMenuBar(parent)
-	if m.optionsMenu == nil {
-		t.Error("m.optionsMenu = nil, want *widgets.QMenu")
+	if m.menuOptions == nil {
+		t.Error("m.menuOptions = nil, want *widgets.QMenu")
 		return false
 	}
-	if m.quitAction == nil {
-		t.Error("m.quitAction = nil, want *widgets.QAction")
+	if m.action.actionQuit == nil {
+		t.Error("m.action.actionQuit = nil, want *widgets.QAction")
 		return false
 	}
-	actions := m.optionsMenu.Actions()
+	actions := m.menuOptions.Actions()
 	if len(actions) == 0 {
-		t.Error("len(m.optionsMenu.Actions()) = 0, want at least 1")
+		t.Error("len(m.menuOptions.Actions()) = 0, want at least 1")
 		return false
-	}
-	var foundIt bool
-	for _, a := range actions {
-		if a.Pointer() == m.quitAction.Pointer() {
-			foundIt = true
-			break
-		}
-	}
-	if !foundIt {
-		t.Error("m.quitAction not found in actions")
 	}
 	return true
 }
@@ -63,7 +53,7 @@ func testCtrlQ(t *testing.T) bool {
 	m := NewMenuBar(window)
 	window.Show()
 	app.SetActiveWindow(window)
-	m.quitAction.ConnectEvent(func(e *core.QEvent) bool {
+	m.action.actionQuit.ConnectEvent(func(e *core.QEvent) bool {
 		called = true
 		return true
 	})
@@ -73,34 +63,34 @@ func testCtrlQ(t *testing.T) bool {
 	event.Simulate(window)
 
 	if !called {
-		t.Error("Ctrl+Q didn't trigger the quitAction")
+		t.Error("Ctrl+Q didn't trigger the actions.actionQuit")
 	}
 	return true
 }
 
 func testToggle(t *testing.T) bool {
 	name := "test"
-	_, mw, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return false
 	}
 	defer cleanup()
 
-	mw.setupUI()
-	mw.setupInteractions()
-	app.SetActiveWindow(mw.window)
-	mw.window.Show()
+	window.setupUI()
+	window.setupInteractions()
+	app.SetActiveWindow(window)
+	window.Show()
 
-	if mw.window.IsHidden() {
+	if window.IsHidden() {
 		t.Error("window is not shown")
 	}
-	mw.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
-	if !mw.window.IsHidden() {
+	window.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if !window.IsHidden() {
 		t.Error("window is not hidden")
 	}
-	mw.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
-	if mw.window.IsHidden() {
+	window.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if window.IsHidden() {
 		t.Error("window is not shown")
 	}
 	return true
