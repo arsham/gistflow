@@ -6,6 +6,7 @@ package gist_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,21 @@ func anyError(err error, list []error) bool {
 	return false
 }
 
+type logger struct {
+	errorFunc   func(string)
+	warningFunc func(string)
+}
+
+func (l logger) Error(msg string)                         { l.errorFunc(msg) }
+func (l logger) Warning(msg string)                       { l.warningFunc(msg) }
+func (l logger) Warningf(format string, a ...interface{}) { l.Warning(fmt.Sprintf(format, a...)) }
+
+func getLogger() *logger {
+	return &logger{
+		errorFunc:   func(string) {},
+		warningFunc: func(string) {},
+	}
+}
 func TestGistListErrors(t *testing.T) {
 	tcs := []struct {
 		name     string
@@ -138,6 +154,7 @@ func TestGistGetError(t *testing.T) {
 		Username: "arsham",
 		Token:    "sometoken",
 		API:      ts.URL,
+		Logger:   getLogger(),
 	}
 	if _, err := s.Get(""); err == nil {
 		t.Error("g.Get(): err = nil, want error")
