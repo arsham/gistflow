@@ -22,6 +22,7 @@ func (m *MainWindow) copyURLToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
 	tab := NewTabFromPointer(widget.Pointer())
 	m.App().Clipboard().SetText(tab.url(), gui.QClipboard__Clipboard)
+	m.showNotification("URL has been copied to clipboard")
 }
 
 func (m *MainWindow) openInBrowser(bool) {
@@ -34,6 +35,7 @@ func (m *MainWindow) copyToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
 	tab := NewTabFromPointer(widget.Pointer())
 	m.App().Clipboard().SetText(tab.content(), gui.QClipboard__Clipboard)
+	m.showNotification("Gist has been copied to clipboard")
 }
 
 func (m *MainWindow) sysTrayClick(widgets.QSystemTrayIcon__ActivationReason) {
@@ -45,7 +47,8 @@ func (m *MainWindow) sysTrayClick(widgets.QSystemTrayIcon__ActivationReason) {
 }
 
 func (m *MainWindow) userInputChange(event *gui.QKeyEvent) {
-	if event.Key() == int(core.Qt__Key_Up) || event.Key() == int(core.Qt__Key_Down) {
+	switch core.Qt__Key(event.Key()) {
+	case core.Qt__Key_Up, core.Qt__Key_Down:
 		m.GistList().SetFocus2()
 	}
 	m.userInput.KeyPressEventDefault(event)
@@ -53,12 +56,6 @@ func (m *MainWindow) userInputChange(event *gui.QKeyEvent) {
 
 func (m *MainWindow) gistListKeyReleaseEvent(event *gui.QKeyEvent) {
 	switch core.Qt__Key(event.Key()) {
-	case core.Qt__Key_Enter, core.Qt__Key_Return:
-		index := m.GistList().CurrentIndex()
-		err := m.openGist(index.Data(gistID).ToString())
-		if err != nil {
-			m.logger.Error(err.Error())
-		}
 	case core.Qt__Key_Delete, core.Qt__Key_Space:
 		fallthrough
 	case core.Qt__Key_Left, core.Qt__Key_Right:
@@ -72,6 +69,18 @@ func (m *MainWindow) gistListKeyReleaseEvent(event *gui.QKeyEvent) {
 			}
 			break
 		}
+	}
+}
+
+func (m *MainWindow) openSelectedGist(event *gui.QKeyEvent) {
+	switch core.Qt__Key(event.Key()) {
+	case core.Qt__Key_Enter, core.Qt__Key_Return:
+		index := m.GistList().CurrentIndex()
+		err := m.openGist(index.Data(gistID).ToString())
+		if err != nil {
+			m.logger.Error(err.Error())
+		}
+		event.Accept()
 	}
 }
 
@@ -114,4 +123,8 @@ func (m *MainWindow) tabWidgetKeyPressEvent(event *gui.QKeyEvent) {
 		}
 		m.TabsWidget().SetCurrentWidget(widget)
 	}
+}
+
+func (m *MainWindow) showNotification(msg string) {
+	m.sysTray.ShowMessage("Info", msg, widgets.QSystemTrayIcon__Information, 4000)
 }

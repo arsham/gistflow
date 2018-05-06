@@ -29,6 +29,7 @@ type MainWindow struct {
 	_ func() `slot:"userInputTextChange"`
 	_ func() `slot:"gistListDoubleClickEvent"`
 	_ func() `slot:"gistListKeyReleaseEvent"`
+	_ func() `slot:"openSelectedGist"`
 	_ func() `slot:"sysTrayClick"`
 	_ func() `slot:"tabWidgetKeyPressEvent"`
 	_ func() `slot:"closeTab"`
@@ -166,6 +167,8 @@ func (m *MainWindow) setupUI() {
 	m.menubar.ConnectCopyToClipboard(m.copyToClipboard)
 	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
 	m.menubar.ConnectOpenInBrowser(m.openInBrowser)
+	m.GistList().ConnectKeyReleaseEvent(m.openSelectedGist)
+	m.userInput.ConnectKeyReleaseEvent(m.openSelectedGist)
 
 	m.menubar.ConnectQuit(func() {
 		m.App().Quit()
