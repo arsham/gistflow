@@ -48,3 +48,7 @@ func (t Tab) content() string {
 func (t Tab) url() string {
 	return t.Gist().URL
 }
+
+func (t Tab) htmlURL() string {
+	return t.Gist().HTMLURL
+}

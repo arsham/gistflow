@@ -15,6 +15,7 @@ type menuBar struct {
 	_ func()     `signal:"quit"`
 	_ func(bool) `signal:"copyToClipboard"`
 	_ func(bool) `signal:"copyURLToClipboard"`
+	_ func(bool) `signal:"openInBrowser"`
 
 	_ *widgets.QMenu `property:"options"`
 	_ *widgets.QMenu `property:"window"`
@@ -41,6 +42,7 @@ func (m *menuBar) init() {
 	m.SetEdit(m.AddMenu2("&Edit"))
 	m.Edit().SetObjectName("edit")
 	m.Edit().AddActions([]*widgets.QAction{
+		m.Actions().actionInBrowser,
 		m.Actions().actionCopyURL,
 		m.Actions().actionClipboard,
 	})
@@ -57,4 +59,5 @@ func (m *menuBar) init() {
 	m.Actions().actionQuit.ConnectTriggered(func(bool) {
 		m.Quit()
 	})
+	m.Actions().actionInBrowser.ConnectTriggered(m.OpenInBrowser)
 }

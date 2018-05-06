@@ -63,6 +63,7 @@
     <property name="title">
      <string>Actions</string>
     </property>
+    <addaction name="actionInBrowser"/>
     <addaction name="actionClipboard"/>
     <addaction name="actionCopyURL"/>
    </widget>
@@ -138,6 +139,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionInBrowser"/>
    <addaction name="actionClipboard"/>
    <addaction name="actionCopyURL"/>
    <addaction name="actionSync"/>
@@ -202,6 +204,14 @@
    </property>
    <property name="toolTip">
     <string>Copy gist URL to clipboard</string>
+   </property>
+  </action>
+  <action name="actionInBrowser">
+   <property name="text">
+    <string>In Browser</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Gist in browser</string>
    </property>
   </action>
  </widget>

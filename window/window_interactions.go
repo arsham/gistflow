@@ -24,6 +24,12 @@ func (m *MainWindow) copyURLToClipboard(bool) {
 	m.App().Clipboard().SetText(tab.url(), gui.QClipboard__Clipboard)
 }
 
+func (m *MainWindow) openInBrowser(bool) {
+	widget := m.TabsWidget().CurrentWidget()
+	tab := NewTabFromPointer(widget.Pointer())
+	gui.QDesktopServices_OpenUrl(core.NewQUrl3(tab.htmlURL(), 0))
+}
+
 func (m *MainWindow) copyToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
 	tab := NewTabFromPointer(widget.Pointer())

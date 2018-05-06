@@ -34,6 +34,7 @@ type MainWindow struct {
 	_ func() `slot:"closeTab"`
 	_ func() `slot:"copyToClipboard"`
 	_ func() `slot:"copyURLToClipboard"`
+	_ func() `slot:"openInBrowser"`
 
 	_ *widgets.QApplication `property:"app"`
 	_ *core.QSettings       `property:"settings"`
@@ -164,6 +165,7 @@ func (m *MainWindow) setupUI() {
 	m.userInput.ConnectTextChanged(m.userInputTextChange)
 	m.menubar.ConnectCopyToClipboard(m.copyToClipboard)
 	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
+	m.menubar.ConnectOpenInBrowser(m.openInBrowser)
 
 	m.menubar.ConnectQuit(func() {
 		m.App().Quit()

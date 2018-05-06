@@ -17,7 +17,7 @@ type Response struct {
 type Gist struct {
 	ID      string          `json:"id"`
 	URL     string          `json:"url"`
-	HTMLURL string          `json:"html_id"`
+	HTMLURL string          `json:"html_url"`
 	Files   map[string]File `json:"files"`
 }
 
