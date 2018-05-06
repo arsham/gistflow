@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
@@ -9,31 +9,24 @@ import (
 )
 
 const (
-	Description = int(core.Qt__DisplayRole)
-	GistID      = int(core.Qt__UserRole) + 1<<iota
-	GistURL
+	description = int(core.Qt__DisplayRole)
+	gistID      = int(core.Qt__UserRole) + 1<<iota
+	gistURL
 )
 
-// tabGist defines one gist item in a tab.
-type tabGist struct {
-	id      string
-	label   string
-	content string
-	url     string
-}
-
-type GistModel struct {
+type listGistModel struct {
 	core.QAbstractListModel
 
-	_ func() `constructor:"init"`
+	_ func()          `constructor:"init"`
+	_ func(*gistItem) `slot:"addGist"`
 
 	_ map[int]*core.QByteArray `property:"roles"`
 	_ []*gistItem              `property:"gists"`
-
-	_ func(*gistItem) `slot:"addGist"`
 }
 
-// gistItem is one row in the QListView.
+// gistItem is one row in the QListView. This is a different gist than
+// gist.Gist, this one does not have enough information as it was received by
+// asking for user's gist list.
 type gistItem struct {
 	core.QObject
 
@@ -46,11 +39,11 @@ func init() {
 	gistItem_QRegisterMetaType()
 }
 
-func (m *GistModel) init() {
+func (m *listGistModel) init() {
 	m.SetRoles(map[int]*core.QByteArray{
-		GistID:      core.NewQByteArray2("gistID", len("gistID")),
-		GistURL:     core.NewQByteArray2("gistURL", len("gistURL")),
-		Description: core.NewQByteArray2("description", len("description")),
+		gistID:      core.NewQByteArray2("gistID", len("gistID")),
+		gistURL:     core.NewQByteArray2("gistURL", len("gistURL")),
+		description: core.NewQByteArray2("description", len("description")),
 	})
 
 	m.ConnectData(m.data)
@@ -61,7 +54,7 @@ func (m *GistModel) init() {
 	m.ConnectAddGist(m.addGist)
 }
 
-func (m *GistModel) data(index *core.QModelIndex, role int) *core.QVariant {
+func (m *listGistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	if !index.IsValid() {
 		return core.NewQVariant()
 	}
@@ -72,13 +65,13 @@ func (m *GistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 
 	var p = m.Gists()[index.Row()]
 	switch role {
-	case GistID:
+	case gistID:
 		return core.NewQVariant14(p.GistID())
 
-	case GistURL:
+	case gistURL:
 		return core.NewQVariant14(p.GistURL())
 
-	case Description:
+	case description:
 		return core.NewQVariant14(p.Description())
 
 	default:
@@ -86,19 +79,19 @@ func (m *GistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	}
 }
 
-func (m *GistModel) rowCount(parent *core.QModelIndex) int {
+func (m *listGistModel) rowCount(parent *core.QModelIndex) int {
 	return len(m.Gists())
 }
 
-func (m *GistModel) columnCount(parent *core.QModelIndex) int {
+func (m *listGistModel) columnCount(parent *core.QModelIndex) int {
 	return 1
 }
 
-func (m *GistModel) roleNames() map[int]*core.QByteArray {
+func (m *listGistModel) roleNames() map[int]*core.QByteArray {
 	return m.Roles()
 }
 
-func (m *GistModel) addGist(p *gistItem) {
+func (m *listGistModel) addGist(p *gistItem) {
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.Gists()), len(m.Gists()))
 	m.SetGists(append(m.Gists(), p))
 	m.EndInsertRows()

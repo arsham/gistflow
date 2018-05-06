@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
@@ -21,6 +21,10 @@ type appAction struct {
 	actionGistList  *widgets.QAction
 	actionSettings  *widgets.QAction
 	actionSync      *widgets.QAction
+}
+
+func init() {
+	appAction_QRegisterMetaType()
 }
 
 func (a *appAction) init() {

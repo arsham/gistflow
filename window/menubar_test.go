@@ -1,5 +1,5 @@
 // Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
+// Use of this source code is governed by the LGPL-v3 license
 // License that can be found in the LICENSE file.
 
 package window
@@ -31,17 +31,17 @@ func TestMenubar(t *testing.T) {
 func testMenuBar(t *testing.T) bool {
 	parent := widgets.NewQWidget(nil, 0)
 	m := NewMenuBar(parent)
-	if m.menuOptions == nil {
-		t.Error("m.menuOptions = nil, want *widgets.QMenu")
+	if m.Options() == nil {
+		t.Error("m.Options() = nil, want *widgets.QMenu")
 		return false
 	}
-	if m.action.actionQuit == nil {
-		t.Error("m.action.actionQuit = nil, want *widgets.QAction")
+	if m.Actions().actionQuit == nil {
+		t.Error("m.Actions().actionQuit = nil, want *widgets.QAction")
 		return false
 	}
-	actions := m.menuOptions.Actions()
+	actions := m.Options().Actions()
 	if len(actions) == 0 {
-		t.Error("len(m.menuOptions.Actions()) = 0, want at least 1")
+		t.Error("len(m.Options().Actions()) = 0, want at least 1")
 		return false
 	}
 	return true
@@ -53,7 +53,7 @@ func testCtrlQ(t *testing.T) bool {
 	m := NewMenuBar(window)
 	window.Show()
 	app.SetActiveWindow(window)
-	m.action.actionQuit.ConnectEvent(func(e *core.QEvent) bool {
+	m.Actions().actionQuit.ConnectEvent(func(e *core.QEvent) bool {
 		called = true
 		return true
 	})
@@ -70,15 +70,10 @@ func testCtrlQ(t *testing.T) bool {
 
 func testToggle(t *testing.T) bool {
 	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
-	if err != nil {
-		t.Error(err)
-		return false
-	}
-	defer cleanup()
-
+	window := NewMainWindow(nil, 0)
+	window.name = name
+	defer window.Hide()
 	window.setupUI()
-	window.setupInteractions()
 	app.SetActiveWindow(window)
 	window.Show()
 

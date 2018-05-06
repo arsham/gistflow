@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 // Package gist communicates with api.github.com in order to retrieve and update
 // user's gists.
@@ -104,10 +104,10 @@ func (s *Service) Iter() chan Response {
 }
 
 // Get gets a gist item by its id.
-func (s *Service) Get(id string) (ResponseGist, error) {
-	var g ResponseGist
+func (s *Service) Get(id string) (Gist, error) {
+	var g Gist
 	if id == "" {
-		return ResponseGist{}, ErrEmptyID
+		return Gist{}, ErrEmptyID
 	}
 
 	body, err := fromCache(s.CacheDir, id)
@@ -129,16 +129,16 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 	url := fmt.Sprintf("%s?access_token=%s", gistURL, s.Token)
 	r, err := http.Get(url)
 	if err != nil {
-		return ResponseGist{}, err
+		return Gist{}, err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode == http.StatusNotFound {
-		return ResponseGist{}, ErrGistNotFound
+		return Gist{}, ErrGistNotFound
 	}
 	body, err = ioutil.ReadAll(r.Body)
 	if err != nil {
-		return ResponseGist{}, err
+		return Gist{}, err
 	}
 
 	if err = saveCache(s.CacheDir, id, body); err != nil {
@@ -147,7 +147,7 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 
 	err = json.Unmarshal(body, &g)
 	if err != nil {
-		return ResponseGist{}, err
+		return Gist{}, err
 	}
 	g.URL = gistURL
 	return g, nil

@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
@@ -38,9 +38,9 @@ func testCopyContents(t *testing.T) {
 	)
 
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gres := gist.ResponseGist{
-			Files: map[string]gist.ResponseFile{
-				"vtsmQN": gist.ResponseFile{Content: content},
+		gres := gist.Gist{
+			Files: map[string]gist.File{
+				"vtsmQN": gist.File{Content: content},
 			},
 		}
 		b, err := json.Marshal(gres)
@@ -59,11 +59,10 @@ func testCopyContents(t *testing.T) {
 	defer cleanup()
 
 	window.setupUI()
-	window.setupInteractions()
 	window.gistService.API = gistTs.URL
 
 	clipboard := app.Clipboard()
-	c := window.menubar.action.actionClipboard
+	c := window.menubar.Actions().actionClipboard
 	content = content1
 	if err := window.openGist(id1); err != nil {
 		t.Errorf("window.openGist(%s) = %v, want nil", id1, err)
@@ -74,14 +73,14 @@ func testCopyContents(t *testing.T) {
 	}
 
 	tab1, tab2 := window.tabGistList[id1], window.tabGistList[id2]
-	window.tabWidget.SetCurrentWidget(tab1)
+	window.TabsWidget().SetCurrentWidget(tab1)
 
 	c.Trigger()
 	if clipboard.Text(gui.QClipboard__Clipboard) != content1 {
 		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), content1)
 	}
 
-	window.tabWidget.SetCurrentWidget(tab2)
+	window.TabsWidget().SetCurrentWidget(tab2)
 	c.Trigger()
 	if clipboard.Text(gui.QClipboard__Clipboard) != content2 {
 		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), content2)
@@ -99,9 +98,9 @@ func testCopyURL(t *testing.T) {
 
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url = fmt.Sprintf("%s%s", api, r.URL.Path)
-		gres := gist.ResponseGist{
-			Files: map[string]gist.ResponseFile{
-				"vtsmQN": gist.ResponseFile{Content: content},
+		gres := gist.Gist{
+			Files: map[string]gist.File{
+				"vtsmQN": gist.File{Content: content},
 			},
 		}
 		b, err := json.Marshal(gres)
@@ -120,12 +119,11 @@ func testCopyURL(t *testing.T) {
 	defer cleanup()
 
 	window.setupUI()
-	window.setupInteractions()
 	window.gistService.API = gistTs.URL
 	api = gistTs.URL
 
 	clipboard := app.Clipboard()
-	c := window.menubar.action.actionCopyURL
+	c := window.menubar.Actions().actionCopyURL
 	if err := window.openGist(id1); err != nil {
 		t.Errorf("window.openGist(%s) = %v, want nil", id1, err)
 	}
@@ -136,14 +134,14 @@ func testCopyURL(t *testing.T) {
 	url2 := url
 
 	tab1, tab2 := window.tabGistList[id1], window.tabGistList[id2]
-	window.tabWidget.SetCurrentWidget(tab1)
+	window.TabsWidget().SetCurrentWidget(tab1)
 
 	c.Trigger()
 	if clipboard.Text(gui.QClipboard__Clipboard) != url1 {
 		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), url1)
 	}
 
-	window.tabWidget.SetCurrentWidget(tab2)
+	window.TabsWidget().SetCurrentWidget(tab2)
 	c.Trigger()
 	if clipboard.Text(gui.QClipboard__Clipboard) != url2 {
 		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), url2)

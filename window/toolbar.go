@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
@@ -8,9 +8,13 @@ import "github.com/therecipe/qt/widgets"
 
 type appToolbar struct {
 	widgets.QToolBar
-	_ func() `constructor:"init"`
 
-	action *appAction
+	_ func()     `constructor:"init"`
+	_ *appAction `property:"action"`
+}
+
+func init() {
+	appToolbar_QRegisterMetaType()
 }
 
 func (a *appToolbar) init() {
@@ -24,13 +28,12 @@ func (a *appToolbar) init() {
 	a.SetMinimumSize2(0, 45)
 	a.SetBaseSize2(0, 45)
 	a.SetFloatable(false)
-}
 
-func (a *appToolbar) SetAction(action *appAction) {
-	a.action = action
-	a.AddActions([]*widgets.QAction{
-		action.actionClipboard,
-		action.actionCopyURL,
-		action.actionSync,
+	a.ConnectSetAction(func(action *appAction) {
+		a.AddActions([]*widgets.QAction{
+			action.actionClipboard,
+			action.actionCopyURL,
+			action.actionSync,
+		})
 	})
 }

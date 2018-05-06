@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package gist_test
 
@@ -93,7 +93,7 @@ func TestGistList(t *testing.T) {
 		t.Errorf("g.List(): err = %v, want nil", err)
 	}
 	if l == nil {
-		t.Error("g.List(): l = nil, want []Response")
+		t.Error("g.List(): l = nil, want []Gist")
 	}
 }
 
@@ -203,16 +203,16 @@ func TestLoadFromCache(t *testing.T) {
 	}
 	defer os.RemoveAll(loc)
 
-	gists := map[string]gist.ResponseGist{
-		id1: gist.ResponseGist{
-			Files: map[string]gist.ResponseFile{
-				"file1": gist.ResponseFile{Content: "WCLwqKzLvzg"},
+	gists := map[string]gist.Gist{
+		id1: gist.Gist{
+			Files: map[string]gist.File{
+				"file1": gist.File{Content: "WCLwqKzLvzg"},
 			},
 		},
-		id2: gist.ResponseGist{
-			Files: map[string]gist.ResponseFile{
-				"file1": gist.ResponseFile{Content: "TLsplcHpevo"},
-				"file2": gist.ResponseFile{Content: "mbcFO"},
+		id2: gist.Gist{
+			Files: map[string]gist.File{
+				"file1": gist.File{Content: "TLsplcHpevo"},
+				"file2": gist.File{Content: "mbcFO"},
 			},
 		},
 	}

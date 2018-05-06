@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
@@ -11,42 +11,50 @@ import (
 type menuBar struct {
 	widgets.QMenuBar
 
-	_ func() `constructor:"init"`
-	_ func() `signal:"quit"`
+	_ func()     `constructor:"init"`
+	_ func()     `signal:"quit"`
+	_ func(bool) `signal:"copyToClipboard"`
+	_ func(bool) `signal:"copyURLToClipboard"`
 
-	menuOptions *widgets.QMenu
-	menuWindow  *widgets.QMenu
-	menuAction  *widgets.QMenu
-	action      *appAction
+	_ *widgets.QMenu `property:"options"`
+	_ *widgets.QMenu `property:"window"`
+	_ *widgets.QMenu `property:"edit"`
+	_ *appAction     `property:"actions"`
+}
+
+func init() {
+	menuBar_QRegisterMetaType()
 }
 
 func (m *menuBar) init() {
-	m.action = NewAppAction(m)
-	m.menuOptions = m.AddMenu2("&Options")
-	m.menuOptions.SetObjectName("menuOptions")
+	m.SetActions(NewAppAction(m))
 
-	m.menuOptions.AddActions([]*widgets.QAction{
-		m.action.actionSettings,
-		m.action.actionSync,
+	m.SetOptions(m.AddMenu2("&Options"))
+	m.Options().SetObjectName("menuOptions")
+	m.Options().AddActions([]*widgets.QAction{
+		m.Actions().actionSettings,
+		m.Actions().actionSync,
 		m.AddSeparator(),
-		m.action.actionQuit,
+		m.Actions().actionQuit,
 	})
 
-	m.menuAction = m.AddMenu2("&Actions")
-	m.menuAction.SetObjectName("menuAction")
-	m.menuAction.AddActions([]*widgets.QAction{
-		m.action.actionCopyURL,
-		m.action.actionClipboard,
+	m.SetEdit(m.AddMenu2("&Edit"))
+	m.Edit().SetObjectName("edit")
+	m.Edit().AddActions([]*widgets.QAction{
+		m.Actions().actionCopyURL,
+		m.Actions().actionClipboard,
 	})
 
-	m.menuWindow = m.AddMenu2("&Window")
-	m.menuWindow.SetObjectName("menuWindow")
-	m.menuWindow.AddActions([]*widgets.QAction{
-		m.action.actionToolbar,
-		m.action.actionGistList,
+	m.SetWindow(m.AddMenu2("&Window"))
+	m.Window().SetObjectName("menuWindow")
+	m.Window().AddActions([]*widgets.QAction{
+		m.Actions().actionToolbar,
+		m.Actions().actionGistList,
 	})
 
-	m.action.actionQuit.ConnectTriggered(func(bool) {
+	m.Actions().actionClipboard.ConnectTriggered(m.CopyToClipboard)
+	m.Actions().actionCopyURL.ConnectTriggered(m.CopyURLToClipboard)
+	m.Actions().actionQuit.ConnectTriggered(func(bool) {
 		m.Quit()
 	})
 }

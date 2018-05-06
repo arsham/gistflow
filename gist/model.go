@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package gist
 
@@ -13,13 +13,15 @@ type Response struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
-// ResponseGist represents one gist.
-type ResponseGist struct {
-	Files map[string]ResponseFile `json:"files"`
-	URL   string                  `json:"url"`
+// Gist represents one gist.
+type Gist struct {
+	ID      string          `json:"id"`
+	URL     string          `json:"url"`
+	HTMLURL string          `json:"html_id"`
+	Files   map[string]File `json:"files"`
 }
 
-// ResponseFile is one file in a ResponseGist.
-type ResponseFile struct {
+// File is one file in a Gist.
+type File struct {
 	Content string `json:"content"`
 }

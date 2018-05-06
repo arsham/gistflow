@@ -1,10 +1,11 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 package window
 
 import (
+	"github.com/arsham/gisty/gist"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -12,32 +13,38 @@ import (
 type Tab struct {
 	widgets.QTabWidget
 
-	_ func() `constructor:"init"`
+	_ func()                  `constructor:"init"`
+	_ *widgets.QPlainTextEdit `property:"editor"`
+	_ *gist.Gist              `property:"gist"`
+}
 
-	textEdit *widgets.QPlainTextEdit
-	gist     *tabGist
+func init() {
+	Tab_QRegisterMetaType()
 }
 
 func (t *Tab) init() {
 	layout := widgets.NewQVBoxLayout()
 	t.SetLayout(layout)
-	t.textEdit = widgets.NewQPlainTextEdit(t)
-	t.textEdit.SetObjectName("content")
+	t.SetEditor(widgets.NewQPlainTextEdit(t))
+	t.Editor().SetObjectName("content")
 
-	layout.AddWidget(t.textEdit, 0, 0)
+	layout.AddWidget(t.Editor(), 0, 0)
 }
 
-func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *tabGist) {
-	t.textEdit.SetPlainText(g.content)
-	tabWidget.AddTab(t, g.label)
+func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
+	for label, g := range g.Files {
+		t.Editor().SetPlainText(g.Content)
+		tabWidget.AddTab(t, label)
+		break
+	}
 	tabWidget.SetCurrentWidget(t)
-	t.gist = g
+	t.SetGist(g)
 }
 
 func (t Tab) content() string {
-	return t.gist.content
+	return t.Editor().ToPlainText()
 }
 
 func (t Tab) url() string {
-	return t.gist.url
+	return t.Gist().URL
 }

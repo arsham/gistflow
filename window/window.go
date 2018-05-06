@@ -1,6 +1,6 @@
-// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights reserved.
-// Use of this source code is governed by the MIT license
-// License that can be found in the LICENSE file.
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
 
 // Package window shows the main application.
 package window
@@ -25,28 +25,42 @@ type MainWindow struct {
 	widgets.QMainWindow
 
 	_ func() `constructor:"setupUI"`
+	_ func() `slot:"userInputChange"`
+	_ func() `slot:"userInputTextChange"`
+	_ func() `slot:"gistListDoubleClickEvent"`
+	_ func() `slot:"gistListKeyReleaseEvent"`
+	_ func() `slot:"sysTrayClick"`
+	_ func() `slot:"tabWidgetKeyPressEvent"`
+	_ func() `slot:"closeTab"`
+	_ func() `slot:"copyToClipboard"`
+	_ func() `slot:"copyURLToClipboard"`
+
+	_ *widgets.QApplication `property:"app"`
+	_ *core.QSettings       `property:"settings"`
+	_ *widgets.QTabWidget   `property:"tabsWidget"`
+	_ *widgets.QStatusBar   `property:"statusArea"` // named this way to avoid collision
+	_ *widgets.QListView    `property:"gistList"`
 
 	name string // namespace in setting file
-	app  *widgets.QApplication
 
 	gistService gist.Service
 	logger      boxLogger
-	settings    *core.QSettings
 
-	tabWidget  *widgets.QTabWidget
 	menubar    *menuBar
-	statusbar  *widgets.QStatusBar
 	dockWidget *widgets.QDockWidget
 	userInput  *widgets.QLineEdit
-	gistList   *widgets.QListView
 	toolBar    *appToolbar
 	sysTray    *widgets.QSystemTrayIcon
 	icon       *gui.QIcon
 
 	tabGistList map[string]*Tab // gist id to the tab
 
-	model *GistModel
+	model *listGistModel
 	proxy *core.QSortFilterProxyModel
+}
+
+func init() {
+	MainWindow_QRegisterMetaType()
 }
 
 // Display shows the main window.
@@ -58,10 +72,9 @@ func (m *MainWindow) Display() error {
 	m.show()
 	// TODO: use singleShot
 	m.setModel()
-	m.settings = getSettings(m.name)
+	m.SetSettings(getSettings(m.name))
 	m.loadSettings()
 	m.populate()
-	m.setupInteractions()
 	widgets.QApplication_Exec()
 	return nil
 }
@@ -83,26 +96,26 @@ func (m *MainWindow) setupUI() {
 	verticalLayout := widgets.NewQVBoxLayout2(centralWidget)
 	verticalLayout.SetObjectName("verticalLayout")
 
-	m.tabWidget = widgets.NewQTabWidget(centralWidget)
-	m.tabWidget.SetObjectName("tabWidget")
-	m.tabWidget.SetTabsClosable(true)
-	m.tabWidget.SetMovable(true)
+	m.SetTabsWidget(widgets.NewQTabWidget(centralWidget))
+	m.TabsWidget().SetObjectName("tabWidget")
+	m.TabsWidget().SetTabsClosable(true)
+	m.TabsWidget().SetMovable(true)
 
-	tab1 := widgets.NewQWidget(m.tabWidget, core.Qt__Widget)
+	tab1 := widgets.NewQWidget(m.TabsWidget(), core.Qt__Widget)
 	tab1.SetObjectName("Untitled")
-	m.tabWidget.AddTab(tab1, "Untitled")
+	m.TabsWidget().AddTab(tab1, "Untitled")
 	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 
-	verticalLayout.AddWidget(m.tabWidget, 0, 0)
+	verticalLayout.AddWidget(m.TabsWidget(), 0, 0)
 
 	m.menubar = NewMenuBar(m)
 	m.menubar.SetObjectName("menubar")
 	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
 	m.SetMenuBar(m.menubar)
 
-	m.statusbar = widgets.NewQStatusBar(m)
-	m.statusbar.SetObjectName("statusbar")
-	m.SetStatusBar(m.statusbar)
+	m.SetStatusArea(widgets.NewQStatusBar(m))
+	m.StatusArea().SetObjectName("statusarea")
+	m.SetStatusBar(m.StatusArea())
 
 	m.dockWidget = widgets.NewQDockWidget("Gists", m, 0)
 	m.dockWidget.SetObjectName("dockWidget")
@@ -119,11 +132,11 @@ func (m *MainWindow) setupUI() {
 	m.userInput.SetObjectName("userInput")
 	m.userInput.SetClearButtonEnabled(true)
 
-	m.gistList = widgets.NewQListView(dockWidgetContents)
-	m.gistList.SetObjectName("gistList")
+	m.SetGistList(widgets.NewQListView(dockWidgetContents))
+	m.GistList().SetObjectName("gistList")
 
 	verticalLayout2.AddWidget(m.userInput, 0, 0)
-	verticalLayout2.AddWidget(m.gistList, 0, 0)
+	verticalLayout2.AddWidget(m.GistList(), 0, 0)
 	m.dockWidget.SetWidget(dockWidgetContents)
 
 	m.dockWidget.SetWidget(dockWidgetContents)
@@ -131,18 +144,29 @@ func (m *MainWindow) setupUI() {
 
 	m.toolBar = NewAppToolbar("Toolbar", m)
 	m.AddToolBar(core.Qt__TopToolBarArea, m.toolBar)
-	m.toolBar.SetAction(m.menubar.action)
+	m.toolBar.SetAction(m.menubar.Actions())
 
 	m.icon = gui.NewQIcon5("./qml/app.ico")
 	m.sysTray = widgets.NewQSystemTrayIcon(m)
 	m.sysTray.SetIcon(m.icon)
 	m.sysTray.SetVisible(true)
 	m.sysTray.SetToolTip("Gisty")
-	m.sysTray.SetContextMenu(m.menubar.menuOptions)
+	m.sysTray.SetContextMenu(m.menubar.Options())
 
 	m.SetWindowIcon(m.icon)
+
+	m.GistList().ConnectKeyReleaseEvent(m.gistListKeyReleaseEvent)
+	m.GistList().ConnectDoubleClicked(m.gistListDoubleClickEvent)
+	m.userInput.ConnectKeyPressEvent(m.userInputChange)
+	m.sysTray.ConnectActivated(m.sysTrayClick)
+	m.TabsWidget().ConnectKeyPressEvent(m.tabWidgetKeyPressEvent)
+	m.TabsWidget().ConnectTabCloseRequested(m.closeTab)
+	m.userInput.ConnectTextChanged(m.userInputTextChange)
+	m.menubar.ConnectCopyToClipboard(m.copyToClipboard)
+	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
+
 	m.menubar.ConnectQuit(func() {
-		m.app.Quit()
+		m.App().Quit()
 	})
 }
 
@@ -151,41 +175,35 @@ func (m *MainWindow) SetGistService(g gist.Service) {
 	m.gistService = g
 }
 
-// SetApp is required to be called in order to be able to control the
-// application's quit signals.
-func (m *MainWindow) SetApp(app *widgets.QApplication) {
-	m.app = app
-}
-
 func (m *MainWindow) show() {
 	m.Show()
 	m.userInput.SetFocus2()
 }
 
 func (m *MainWindow) setModel() {
-	m.model = NewGistModel(nil)
+	m.model = NewListGistModel(nil)
 
 	m.proxy = core.NewQSortFilterProxyModel(nil)
 	m.proxy.SetSourceModel(m.model)
 	m.proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
 
-	m.gistList.SetModel(m.proxy)
+	m.GistList().SetModel(m.proxy)
 }
 
 func (m *MainWindow) loadSettings() {
 	tmp := widgets.NewQWidget(nil, 0)
 	tmp.SetGeometry2(100, 100, 600, 600)
 	defSize := tmp.SaveGeometry()
-	sizeVar := m.settings.Value(mainWindowGeometry, core.NewQVariant15(defSize))
+	sizeVar := m.Settings().Value(mainWindowGeometry, core.NewQVariant15(defSize))
 	m.RestoreGeometry(sizeVar.ToByteArray())
-	m.app.ConnectAboutToQuit(m.saveSettings)
+	m.App().ConnectAboutToQuit(m.saveSettings)
 }
 
 func (m *MainWindow) saveSettings() {
 	current := m.SaveGeometry()
 	currentVar := core.NewQVariant15(current.QByteArray_PTR())
-	m.settings.SetValue(mainWindowGeometry, currentVar)
-	m.settings.Sync()
+	m.Settings().SetValue(mainWindowGeometry, currentVar)
+	m.Settings().Sync()
 }
 
 func getSettings(name string) *core.QSettings {
@@ -221,12 +239,8 @@ func (m *MainWindow) populate() {
 }
 
 func (m *MainWindow) openGist(id string) error {
-	var (
-		content string
-		name    string
-	)
 	if g, ok := m.tabGistList[id]; ok {
-		m.tabWidget.SetCurrentWidget(g)
+		m.TabsWidget().SetCurrentWidget(g)
 		return nil
 	}
 	rg, err := m.gistService.Get(id)
@@ -234,26 +248,14 @@ func (m *MainWindow) openGist(id string) error {
 		return errors.Wrapf(err, "id: %s", id)
 	}
 
-	for n, f := range rg.Files {
-		content = f.Content
-		name = n
-		break
-	}
-
-	g := &tabGist{
-		id:      id,
-		content: content,
-		label:   name,
-		url:     rg.URL,
-	}
-	tab := NewTab(m.tabWidget)
-	tab.showGist(m.tabWidget, g)
+	tab := NewTab(m.TabsWidget())
+	tab.showGist(m.TabsWidget(), &rg)
 	m.tabGistList[id] = tab
 	return nil
 }
 
 func (m *MainWindow) tabIDFromIndex(index int) string {
-	tab := m.tabWidget.Widget(index)
+	tab := m.TabsWidget().Widget(index)
 	if tab.Pointer() == nil {
 		return ""
 	}
@@ -268,7 +270,7 @@ func (m *MainWindow) tabIDFromIndex(index int) string {
 
 func (m *MainWindow) closeTab(index int) {
 	id := m.tabIDFromIndex(index)
-	m.tabWidget.RemoveTab(index)
+	m.TabsWidget().RemoveTab(index)
 	delete(m.tabGistList, id)
 }
 
