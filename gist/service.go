@@ -117,14 +117,15 @@ func (s *Service) Get(id string) (ResponseGist, error) {
 		s.Logger.Warningf("reading from cache: %s", err.Error())
 	}
 
+	gistURL := fmt.Sprintf("%s/gists/%s", s.api(), id)
 	if body != nil {
 		if err = json.Unmarshal(body, &g); err == nil {
+			g.URL = gistURL
 			return g, nil
 		}
 		s.Logger.Warning(err.Error())
 	}
 
-	gistURL := fmt.Sprintf("%s/gists/%s", s.api(), id)
 	url := fmt.Sprintf("%s?access_token=%s", gistURL, s.Token)
 	r, err := http.Get(url)
 	if err != nil {
