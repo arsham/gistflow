@@ -21,7 +21,7 @@ func (m *MainWindow) userInputTextChange(text string) {
 func (m *MainWindow) copyURLToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
 	tab := NewTabFromPointer(widget.Pointer())
-	m.App().Clipboard().SetText(tab.url(), gui.QClipboard__Clipboard)
+	m.clipboard().SetText(tab.url(), gui.QClipboard__Clipboard)
 	m.showNotification("URL has been copied to clipboard")
 }
 
@@ -34,7 +34,7 @@ func (m *MainWindow) openInBrowser(bool) {
 func (m *MainWindow) copyToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
 	tab := NewTabFromPointer(widget.Pointer())
-	m.App().Clipboard().SetText(tab.content(), gui.QClipboard__Clipboard)
+	m.clipboard().SetText(tab.content(), gui.QClipboard__Clipboard)
 	m.showNotification("Gist has been copied to clipboard")
 }
 
@@ -92,39 +92,60 @@ func (m *MainWindow) gistListDoubleClickEvent(*core.QModelIndex) {
 	}
 }
 
-func (m *MainWindow) tabWidgetKeyPressEvent(event *gui.QKeyEvent) {
-	// Closing tab
-	if event.Modifiers() == core.Qt__ControlModifier {
-		index := m.TabsWidget().CurrentIndex()
-
-		switch core.Qt__Key(event.Key()) {
-		case core.Qt__Key_PageDown:
-			m.TabsWidget().SetCurrentIndex(index + 1)
-		case core.Qt__Key_PageUp:
-			m.TabsWidget().SetCurrentIndex(index - 1)
-		case core.Qt__Key_W:
-			m.TabsWidget().TabCloseRequested(index)
-		}
-	}
-
-	// Moving left and right
-	if event.Modifiers() == core.Qt__ShiftModifier+core.Qt__ControlModifier {
-		widget := m.TabsWidget().CurrentWidget()
-		index := m.TabsWidget().CurrentIndex()
-		text := m.TabsWidget().TabText(index)
-
-		switch core.Qt__Key(event.Key()) {
-		case core.Qt__Key_PageDown:
-			m.TabsWidget().RemoveTab(index)
-			m.TabsWidget().InsertTab(index+1, widget, text)
-		case core.Qt__Key_PageUp:
-			m.TabsWidget().RemoveTab(index)
-			m.TabsWidget().InsertTab(index-1, widget, text)
-		}
-		m.TabsWidget().SetCurrentWidget(widget)
-	}
-}
-
 func (m *MainWindow) showNotification(msg string) {
 	m.sysTray.ShowMessage("Info", msg, widgets.QSystemTrayIcon__Information, 4000)
+}
+
+func (m *MainWindow) tabMovementEventFilter() *core.QObject {
+	var filterObject = core.NewQObject(nil)
+	filterObject.ConnectEventFilter(func(watched *core.QObject, event *core.QEvent) bool {
+
+		if event.Type() == core.QEvent__KeyPress {
+			var keyEvent = gui.NewQKeyEventFromPointer(event.Pointer())
+
+			// moving tabs
+			if keyEvent.Modifiers() == core.Qt__ShiftModifier+core.Qt__ControlModifier {
+				widget := m.TabsWidget().CurrentWidget()
+				index := m.TabsWidget().CurrentIndex()
+				text := m.TabsWidget().TabText(index)
+
+				switch core.Qt__Key(keyEvent.Key()) {
+				case core.Qt__Key_PageDown:
+					m.TabsWidget().RemoveTab(index)
+					m.TabsWidget().InsertTab(index+1, widget, text)
+				case core.Qt__Key_PageUp:
+					m.TabsWidget().RemoveTab(index)
+					m.TabsWidget().InsertTab(index-1, widget, text)
+				}
+
+				switch core.Qt__Key(keyEvent.Key()) {
+				case core.Qt__Key_PageDown, core.Qt__Key_PageUp:
+					m.TabsWidget().SetCurrentWidget(widget)
+					return true
+				}
+			}
+
+			// switching and closing tabs
+			if keyEvent.Modifiers() == core.Qt__ControlModifier {
+				index := m.TabsWidget().CurrentIndex()
+
+				switch core.Qt__Key(keyEvent.Key()) {
+				case core.Qt__Key_PageDown:
+					m.TabsWidget().SetCurrentIndex(index + 1)
+				case core.Qt__Key_PageUp:
+					m.TabsWidget().SetCurrentIndex(index - 1)
+				case core.Qt__Key_W:
+					m.TabsWidget().TabCloseRequested(index)
+				}
+
+				switch core.Qt__Key(keyEvent.Key()) {
+				case core.Qt__Key_PageDown, core.Qt__Key_PageUp, core.Qt__Key_W:
+					return true
+				}
+			}
+		}
+
+		return false
+	})
+	return filterObject
 }

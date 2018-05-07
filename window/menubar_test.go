@@ -73,7 +73,6 @@ func testToggle(t *testing.T) bool {
 	window := NewMainWindow(nil, 0)
 	window.name = name
 	defer window.Hide()
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.Show()
 

@@ -13,6 +13,8 @@ import (
 	"github.com/arsham/gisty/gist"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/testlib"
+	"github.com/therecipe/qt/widgets"
 )
 
 func TestTabCreation(t *testing.T) {
@@ -49,7 +51,6 @@ func testTabCreation(t *testing.T) {
 		return
 	}
 	defer cleanup()
-	window.setupUI()
 
 	if window.TabsWidget().Count() != 1 {
 		t.Errorf("window.TabsWidget().Count() = %d, want 1", window.TabsWidget().Count())
@@ -107,7 +108,6 @@ func testTabIDFromIndex(t *testing.T) {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.gistService.API = gistTs.URL
 	currentIndex := window.TabsWidget().CurrentIndex()
 	window.openGist(id1)
@@ -128,20 +128,36 @@ func testTabIDFromIndex(t *testing.T) {
 	}
 }
 
-func testSwitchTabs(t *testing.T) {
-	var name = "test"
-	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
-	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
+type keyReleaseEventWidget interface {
+	widgets.QWidget_ITF
+	KeyReleaseEvent(gui.QKeyEvent_ITF)
+	SetFocus2()
+}
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+func testSwitchTabs(t *testing.T) {
+	testSwitchTabsOnWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
+		return window.TabsWidget()
+	})
+	testSwitchTabsOnWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
+		return window.GistList()
+	})
+	testSwitchTabsOnWidget(t, "UserInput", func(window *MainWindow) keyReleaseEventWidget {
+		return window.userInput
+	})
+}
+
+func testSwitchTabsOnWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
+	_, window, cleanup, err := setup(t, "test", nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	defer cleanup()
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
+	w := f(window)
+	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
+	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
 
 	leftTab := NewTab(window.TabsWidget())
 	leftTab.showGist(window.TabsWidget(), g1)
@@ -154,32 +170,46 @@ func testSwitchTabs(t *testing.T) {
 		rightIndex = leftIndex
 	}
 	window.TabsWidget().SetCurrentIndex(rightIndex)
-	window.TabsWidget().SetFocus2()
 
-	event := gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageUp), core.Qt__ControlModifier, "", false, 1)
-	window.TabsWidget().KeyPressEvent(event)
+	event := testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_PageUp, core.Qt__ControlModifier, -1)
+	event.Simulate(w)
+	if window.TabsWidget().CurrentIndex() != leftIndex {
+		t.Errorf("%s: window.TabsWidget().CurrentIndex() = %d, want %d", name, window.TabsWidget().CurrentIndex(), leftIndex)
+	}
 
-	event = gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageDown), core.Qt__ControlModifier, "", false, 1)
-	window.TabsWidget().KeyPressEvent(event)
+	event = testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_PageDown, core.Qt__ControlModifier, -1)
+	event.Simulate(w)
 	if window.TabsWidget().CurrentIndex() != rightIndex {
-		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want %d", window.TabsWidget().CurrentIndex(), rightIndex)
+		t.Errorf("%s: window.TabsWidget().CurrentIndex() = %d, want %d", name, window.TabsWidget().CurrentIndex(), rightIndex)
 	}
 }
 
 func testMovingTabs(t *testing.T) {
-	var name = "test"
-	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
-	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
+	testMovingTabsOnTabWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
+		return window.TabsWidget()
+	})
+	testMovingTabsOnTabWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
+		return window.GistList()
+	})
+	testMovingTabsOnTabWidget(t, "UserInput", func(window *MainWindow) keyReleaseEventWidget {
+		return window.userInput
+	})
+}
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+func testMovingTabsOnTabWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
+	_, window, cleanup, err := setup(t, "test", nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	defer cleanup()
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
+	w := f(window)
+	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
+	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
 
 	leftTab := NewTab(window.TabsWidget())
 	leftTab.showGist(window.TabsWidget(), g1)
@@ -194,25 +224,26 @@ func testMovingTabs(t *testing.T) {
 		leftTab, rightTab = rightTab, leftTab
 	}
 	window.TabsWidget().SetCurrentIndex(rightIndex)
-	window.TabsWidget().SetFocus2()
 
-	event := gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageUp), core.Qt__ControlModifier+core.Qt__ShiftModifier, "", false, 1)
-	window.TabsWidget().KeyPressEvent(event)
+	event := testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_PageUp, core.Qt__ControlModifier+core.Qt__ShiftModifier, -1)
+	event.Simulate(w)
 	if window.TabsWidget().IndexOf(rightTab) != leftIndex {
-		t.Errorf("window.TabsWidget().IndexOf(rightTab) = %d, want %d", window.TabsWidget().IndexOf(rightTab), leftIndex)
+		t.Errorf("%s: window.TabsWidget().IndexOf(rightTab) = %d, want %d", name, window.TabsWidget().IndexOf(rightTab), leftIndex)
 	}
 	if window.TabsWidget().CurrentWidget().Pointer() != rightTab.Pointer() {
-		t.Error("focus is still on leftTab, want rightTab")
+		t.Errorf("%s: focus is still on leftTab, want rightTab", name)
 	}
 
 	// now we are swichng back
-	event = gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_PageDown), core.Qt__ControlModifier+core.Qt__ShiftModifier, "", false, 1)
-	window.TabsWidget().KeyPressEvent(event)
+	event = testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_PageDown, core.Qt__ControlModifier+core.Qt__ShiftModifier, -1)
+	event.Simulate(w)
 	if window.TabsWidget().IndexOf(rightTab) != rightIndex {
-		t.Errorf("window.TabsWidget().IndexOf(rightTab) = %d, want %d", window.TabsWidget().IndexOf(rightTab), rightIndex)
+		t.Errorf("%s: window.TabsWidget().IndexOf(rightTab) = %d, want %d", name, window.TabsWidget().IndexOf(rightTab), rightIndex)
 	}
 	if window.TabsWidget().CurrentWidget().Pointer() != rightTab.Pointer() {
-		t.Error("focus is still on leftTab, want rightTab")
+		t.Errorf("%s: focus is still on leftTab, want rightTab", name)
 	}
 }
 
@@ -247,7 +278,6 @@ func testRemoveOpenTab(t *testing.T) {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.gistService.API = gistTs.URL
 
 	currentLen := len(window.tabGistList)
@@ -297,7 +327,6 @@ func testWindowClickCloseTab(t *testing.T) {
 		return
 	}
 	defer cleanup()
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
 
@@ -321,13 +350,13 @@ func testWindowClickCloseTab(t *testing.T) {
 	window.TabsWidget().TabCloseRequested(index)
 
 	if !called {
-		t.Error("didn't close the tab")
+		t.Errorf("%s: didn't close the tab", name)
 	}
 	if window.TabsWidget().Count() != currentSize-1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), currentSize-1)
+		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", name, window.TabsWidget().Count(), currentSize-1)
 	}
 	if window.TabsWidget().IndexOf(tab) != -1 {
-		t.Errorf("window.TabsWidget().IndexOf(tab) = %d, want %d", window.TabsWidget().IndexOf(tab), -1)
+		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", name, window.TabsWidget().IndexOf(tab), -1)
 	}
 
 	if _, ok := window.tabGistList[g.ID]; ok {
@@ -336,21 +365,29 @@ func testWindowClickCloseTab(t *testing.T) {
 }
 
 func testShortcutTabClose(t *testing.T) {
-	var (
-		name   = "test"
-		called bool
-	)
-	g := getGist("TGtyIHIK", "hPtRE", "quIwMlPsoVaNr")
+	testShortcutTabCloseWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
+		return window.TabsWidget()
+	})
+	testShortcutTabCloseWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
+		return window.GistList()
+	})
+	testShortcutTabCloseWidget(t, "UserInput", func(window *MainWindow) keyReleaseEventWidget {
+		return window.userInput
+	})
+}
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
+	var called bool
+	_, window, cleanup, err := setup(t, "test", nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	defer cleanup()
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
+	w := f(window)
+	g := getGist("TGtyIHIK", "hPtRE", "quIwMlPsoVaNr")
 
 	tab := NewTab(window.TabsWidget())
 	tab.showGist(window.TabsWidget(), g)
@@ -358,30 +395,31 @@ func testShortcutTabClose(t *testing.T) {
 	currentSize := window.TabsWidget().Count()
 
 	window.TabsWidget().SetCurrentWidget(tab)
-	window.TabsWidget().SetFocus2()
+	w.SetFocus2()
 
 	window.TabsWidget().ConnectTabCloseRequested(func(i int) {
 		if i == index {
 			called = true
 			return
 		}
-		t.Errorf("i = %d, want %d", i, index)
+		t.Errorf("%s: i = %d, want %d", name, i, index)
 	})
 
-	event := gui.NewQKeyEvent(core.QEvent__KeyPress, int(core.Qt__Key_W), core.Qt__ControlModifier, "", false, 1)
-	window.TabsWidget().KeyPressEvent(event)
+	event := testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_W, core.Qt__ControlModifier, -1)
+	event.Simulate(w)
 
 	if !called {
-		t.Error("didn't close the tab")
+		t.Errorf("%s: didn't close the tab", name)
 	}
 	if window.TabsWidget().Count() != currentSize-1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), currentSize-1)
+		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", name, window.TabsWidget().Count(), currentSize-1)
 	}
 	if window.TabsWidget().IndexOf(tab) != -1 {
-		t.Errorf("window.TabsWidget().IndexOf(tab) = %d, want %d", window.TabsWidget().IndexOf(tab), -1)
+		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", name, window.TabsWidget().IndexOf(tab), -1)
 	}
 
 	if _, ok := window.tabGistList[g.ID]; ok {
-		t.Errorf("%s was not removed from the list", g.ID)
+		t.Errorf("%s: %s was not removed from the list", name, g.ID)
 	}
 }

@@ -35,6 +35,7 @@ func testCopyContents(t *testing.T) {
 		id2      = "JgXLvhmbEnSoIBAO"
 		content2 = "RqnWSPAzagjzccGqpggWi"
 		content  string
+		clpText  string
 	)
 
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,11 +58,14 @@ func testCopyContents(t *testing.T) {
 		return
 	}
 	defer cleanup()
-
-	window.setupUI()
 	window.gistService.API = gistTs.URL
-
-	clipboard := app.Clipboard()
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{
+			textFunc: func(text string, mode gui.QClipboard__Mode) {
+				clpText = text
+			},
+		}
+	}
 	c := window.menubar.Actions().actionClipboard
 	content = content1
 	if err := window.openGist(id1); err != nil {
@@ -76,14 +80,14 @@ func testCopyContents(t *testing.T) {
 	window.TabsWidget().SetCurrentWidget(tab1)
 
 	c.Trigger()
-	if clipboard.Text(gui.QClipboard__Clipboard) != content1 {
-		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), content1)
+	if clpText != content1 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, content1)
 	}
 
 	window.TabsWidget().SetCurrentWidget(tab2)
 	c.Trigger()
-	if clipboard.Text(gui.QClipboard__Clipboard) != content2 {
-		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), content2)
+	if clpText != content2 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, content2)
 	}
 }
 
@@ -94,6 +98,7 @@ func testCopyURL(t *testing.T) {
 		content  = "AFMQydAKTiJLa"
 		id2      = "yuaosJCTsGUqEldvigi"
 		api, url string
+		clpText  string
 	)
 
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -118,11 +123,16 @@ func testCopyURL(t *testing.T) {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.gistService.API = gistTs.URL
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{
+			textFunc: func(text string, mode gui.QClipboard__Mode) {
+				clpText = text
+			},
+		}
+	}
 	api = gistTs.URL
 
-	clipboard := app.Clipboard()
 	c := window.menubar.Actions().actionCopyURL
 	if err := window.openGist(id1); err != nil {
 		t.Errorf("window.openGist(%s) = %v, want nil", id1, err)
@@ -137,13 +147,13 @@ func testCopyURL(t *testing.T) {
 	window.TabsWidget().SetCurrentWidget(tab1)
 
 	c.Trigger()
-	if clipboard.Text(gui.QClipboard__Clipboard) != url1 {
-		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), url1)
+	if clpText != url1 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, url1)
 	}
 
 	window.TabsWidget().SetCurrentWidget(tab2)
 	c.Trigger()
-	if clipboard.Text(gui.QClipboard__Clipboard) != url2 {
-		t.Errorf("clipboard.Text(gui.QClipboard__Clipboard) = `%s`, want `%s`", clipboard.Text(gui.QClipboard__Clipboard), url2)
+	if clpText != url2 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, url2)
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"
 
 	"github.com/arsham/gisty/gist"
@@ -68,6 +69,12 @@ func (l logger) Error(msg string)                         { l.errorFunc(msg) }
 func (l logger) Warning(msg string)                       { l.warningFunc(msg) }
 func (l logger) Warningf(format string, a ...interface{}) { l.Warning(fmt.Sprintf(format, a...)) }
 
+type fakeClipboard struct {
+	textFunc func(string, gui.QClipboard__Mode)
+}
+
+func (f *fakeClipboard) SetText(text string, mode gui.QClipboard__Mode) { f.textFunc(text, mode) }
+
 func setup(t *testing.T, name string, input []gist.Response, answers int) (*httptest.Server, *MainWindow, func(), error) {
 	var counter int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +114,9 @@ func setup(t *testing.T, name string, input []gist.Response, answers int) (*http
 	window.SetApp(app)
 	window.name = name
 	window.logger = l
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{textFunc: func(text string, mode gui.QClipboard__Mode) {}}
+	}
 
 	return ts, window, func() {
 		ts.Close()
@@ -129,6 +139,9 @@ func testWindowStartupWidgets(t *testing.T) bool {
 	oldLogger := window.logger
 	window.logger = nil
 	window.setupUI()
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{textFunc: func(text string, mode gui.QClipboard__Mode) {}}
+	}
 
 	if window.logger == nil {
 		t.Error("window.logger = nil, want boxLogger")
@@ -195,6 +208,11 @@ func testWindowStartupWidgets(t *testing.T) bool {
 	if !window.userInput.IsClearButtonEnabled() {
 		t.Error("userInput doesn't have a clear button")
 	}
+
+	if window.clipboard() == nil {
+		t.Error("window.clipboard() = nil, want *gui.QClipboard")
+		return false
+	}
 	return true
 }
 
@@ -206,7 +224,6 @@ func testWindowModel(t *testing.T) bool {
 		return false
 	}
 	defer cleanup()
-	window.setupUI()
 	window.setModel()
 	if window.model == nil {
 		t.Error("window.model = nil, want listGistModel")
@@ -245,7 +262,6 @@ func testPopulateError(t *testing.T) bool {
 	}
 	window.gistService.Logger = nil
 	defer cleanup()
-	window.setupUI()
 	window.setModel()
 
 	window.logger = &logger{
@@ -288,7 +304,6 @@ func testPopulate(t *testing.T) bool {
 	defer cleanup()
 	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
 
-	window.setupUI()
 	window.setModel()
 	window.populate()
 
@@ -319,7 +334,6 @@ func testLoadingGeometry(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	x, y, w, h := 400, 500, 600, 700
 	tmpObj := widgets.NewQWidget(nil, 0)
 	tmpObj.SetGeometry2(x, y, w, h)
@@ -372,7 +386,6 @@ func testFilteringGists(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.setModel()
 	window.populate()
 
@@ -400,7 +413,6 @@ func testListViewKeys(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.setModel()
 	window.populate()
 
@@ -480,7 +492,6 @@ func testViewGist(t *testing.T) (forward bool) {
 	defer cleanup()
 	window.gistService.API = gistTs.URL
 
-	window.setupUI()
 	if window.TabsWidget().Count() != 1 {
 		t.Errorf("window.TabsWidget().Count() = %d, want 1", window.TabsWidget().Count())
 		return false
@@ -548,7 +559,6 @@ func testClickViewGist(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.setModel()
 	window.populate()
 	window.gistService.API = gistTs.URL
@@ -608,7 +618,6 @@ func testExchangingFocus(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
 
@@ -692,7 +701,6 @@ func testOpeningGistTwice(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	window.gistService.API = gistTs.URL
 
 	startingSize := window.TabsWidget().Count()
@@ -732,7 +740,6 @@ func testWindowStartupFocus(t *testing.T) bool {
 	}
 	defer cleanup()
 
-	window.setupUI()
 	app.SetActiveWindow(window)
 	window.show()
 
@@ -751,8 +758,6 @@ func testTypingOnListView(t *testing.T) bool {
 		return false
 	}
 	defer cleanup()
-
-	window.setupUI()
 
 	tcs := []struct {
 		prefix string

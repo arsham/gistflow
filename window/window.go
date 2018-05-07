@@ -20,22 +20,30 @@ const (
 	mainWindowGeometry = "mainWindowGeometry"
 )
 
+type clipboard interface {
+	SetText(string, gui.QClipboard__Mode)
+}
+
 // MainWindow is the main window of the application.
 type MainWindow struct {
 	widgets.QMainWindow
 
 	_ func() `constructor:"setupUI"`
+
+	_ func() `slot:"openSelectedGist"`
+	_ func() `slot:"closeTab"`
+
 	_ func() `slot:"userInputChange"`
 	_ func() `slot:"userInputTextChange"`
+
 	_ func() `slot:"gistListDoubleClickEvent"`
 	_ func() `slot:"gistListKeyReleaseEvent"`
-	_ func() `slot:"openSelectedGist"`
-	_ func() `slot:"sysTrayClick"`
-	_ func() `slot:"tabWidgetKeyPressEvent"`
-	_ func() `slot:"closeTab"`
+
 	_ func() `slot:"copyToClipboard"`
 	_ func() `slot:"copyURLToClipboard"`
 	_ func() `slot:"openInBrowser"`
+
+	_ func() `slot:"sysTrayClick"`
 
 	_ *widgets.QApplication `property:"app"`
 	_ *core.QSettings       `property:"settings"`
@@ -59,6 +67,8 @@ type MainWindow struct {
 
 	model *listGistModel
 	proxy *core.QSortFilterProxyModel
+
+	clipboard func() clipboard
 }
 
 func init() {
@@ -156,23 +166,32 @@ func (m *MainWindow) setupUI() {
 	m.sysTray.SetContextMenu(m.menubar.Options())
 
 	m.SetWindowIcon(m.icon)
+	filter := m.tabMovementEventFilter()
+
+	m.userInput.ConnectKeyPressEvent(m.userInputChange)
+	m.userInput.ConnectKeyReleaseEvent(m.openSelectedGist)
+	m.userInput.ConnectTextChanged(m.userInputTextChange)
+	m.userInput.InstallEventFilter(filter)
 
 	m.GistList().ConnectKeyReleaseEvent(m.gistListKeyReleaseEvent)
 	m.GistList().ConnectDoubleClicked(m.gistListDoubleClickEvent)
-	m.userInput.ConnectKeyPressEvent(m.userInputChange)
-	m.sysTray.ConnectActivated(m.sysTrayClick)
-	m.TabsWidget().ConnectKeyPressEvent(m.tabWidgetKeyPressEvent)
+	m.GistList().ConnectKeyReleaseEvent(m.openSelectedGist)
+	m.GistList().InstallEventFilter(filter)
+
+	m.TabsWidget().InstallEventFilter(filter)
 	m.TabsWidget().ConnectTabCloseRequested(m.closeTab)
-	m.userInput.ConnectTextChanged(m.userInputTextChange)
+
 	m.menubar.ConnectCopyToClipboard(m.copyToClipboard)
 	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
 	m.menubar.ConnectOpenInBrowser(m.openInBrowser)
-	m.GistList().ConnectKeyReleaseEvent(m.openSelectedGist)
-	m.userInput.ConnectKeyReleaseEvent(m.openSelectedGist)
-
 	m.menubar.ConnectQuit(func() {
 		m.App().Quit()
 	})
+
+	m.sysTray.ConnectActivated(m.sysTrayClick)
+	m.clipboard = func() clipboard {
+		return m.App().Clipboard()
+	}
 }
 
 // SetGistService sets the service required for public api interactions.
