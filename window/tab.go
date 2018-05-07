@@ -13,9 +13,12 @@ import (
 type Tab struct {
 	widgets.QTabWidget
 
-	_ func()                  `constructor:"init"`
-	_ *widgets.QPlainTextEdit `property:"editor"`
-	_ *gist.Gist              `property:"gist"`
+	_ func()       `constructor:"init"`
+	_ func(string) `signal:"copyToClipboard"`
+
+	_ *widgets.QVBoxLayout `property:"vBoxLayout"`
+	_ []file               `property:"files"`
+	_ *gist.Gist           `property:"gist"`
 }
 
 func init() {
@@ -23,26 +26,27 @@ func init() {
 }
 
 func (t *Tab) init() {
-	layout := widgets.NewQVBoxLayout()
+	layout := widgets.NewQVBoxLayout2(t)
+	layout.SetObjectName("Inner Layout")
+	t.SetVBoxLayout(layout)
 	t.SetLayout(layout)
-	t.SetEditor(widgets.NewQPlainTextEdit(t))
-	t.Editor().SetObjectName("content")
-
-	layout.AddWidget(t.Editor(), 0, 0)
 }
 
 func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	for label, g := range g.Files {
-		t.Editor().SetPlainText(g.Content)
+		f := NewFile(t, 0)
+		f.Content().SetText(g.Content)
+		f.Information().SetText(label)
+		t.VBoxLayout().AddWidget(f, 0, 0)
+		t.SetFiles(append(t.Files(), f))
+		f.ConnectCopyToClipboard(t.CopyToClipboard)
+	}
+	for label := range g.Files {
 		tabWidget.AddTab(t, label)
 		break
 	}
 	tabWidget.SetCurrentWidget(t)
 	t.SetGist(g)
-}
-
-func (t Tab) content() string {
-	return t.Editor().ToPlainText()
 }
 
 func (t Tab) url() string {

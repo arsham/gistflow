@@ -39,9 +39,9 @@ type MainWindow struct {
 	_ func() `slot:"gistListDoubleClickEvent"`
 	_ func() `slot:"gistListKeyReleaseEvent"`
 
-	_ func() `slot:"copyToClipboard"`
-	_ func() `slot:"copyURLToClipboard"`
-	_ func() `slot:"openInBrowser"`
+	_ func(string) `slot:"copyToClipboard"`
+	_ func()       `slot:"copyURLToClipboard"`
+	_ func()       `slot:"openInBrowser"`
 
 	_ func() `slot:"sysTrayClick"`
 
@@ -181,7 +181,6 @@ func (m *MainWindow) setupUI() {
 	m.TabsWidget().InstallEventFilter(filter)
 	m.TabsWidget().ConnectTabCloseRequested(m.closeTab)
 
-	m.menubar.ConnectCopyToClipboard(m.copyToClipboard)
 	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
 	m.menubar.ConnectOpenInBrowser(m.openInBrowser)
 	m.menubar.ConnectQuit(func() {
@@ -251,7 +250,7 @@ func (m *MainWindow) populate() {
 	// TODO: populate in background.
 	for item := range m.gistService.Iter() {
 		foundOne = true
-		var g = NewGistItem(nil)
+		var g = NewListGistItem(nil)
 		g.SetGistID(item.ID)
 		g.SetGistURL(item.URL)
 		g.SetDescription(item.Description)
@@ -275,6 +274,9 @@ func (m *MainWindow) openGist(id string) error {
 	tab := NewTab(m.TabsWidget())
 	tab.showGist(m.TabsWidget(), &rg)
 	m.tabGistList[id] = tab
+	tab.ConnectCopyToClipboard(func(text string) {
+		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
+	})
 	return nil
 }
 

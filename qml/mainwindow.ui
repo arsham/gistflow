@@ -64,7 +64,6 @@
      <string>Actions</string>
     </property>
     <addaction name="actionInBrowser"/>
-    <addaction name="actionClipboard"/>
     <addaction name="actionCopyURL"/>
    </widget>
    <addaction name="menuOptions"/>
@@ -140,18 +139,9 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionInBrowser"/>
-   <addaction name="actionClipboard"/>
    <addaction name="actionCopyURL"/>
    <addaction name="actionSync"/>
   </widget>
-  <action name="actionClipboard">
-   <property name="text">
-    <string>Clipboard</string>
-   </property>
-   <property name="toolTip">
-    <string>Copy to clipboard</string>
-   </property>
-  </action>
   <action name="actionQuit">
    <property name="text">
     <string>E&amp;xit</string>

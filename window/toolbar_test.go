@@ -16,9 +16,8 @@ func TestToolbarActions(t *testing.T) {
 	toolbar.SetAction(action)
 
 	tcs := map[string]*widgets.QAction{
-		"actionClipboard": action.actionClipboard,
-		"actionSync":      action.actionSync,
-		"actionCopyURL":   action.actionCopyURL,
+		"actionSync":    action.actionSync,
+		"actionCopyURL": action.actionCopyURL,
 	}
 	for name, a := range tcs {
 		if !isIn(toolbar.Actions(), a) {

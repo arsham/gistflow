@@ -31,13 +31,6 @@ func (m *MainWindow) openInBrowser(bool) {
 	gui.QDesktopServices_OpenUrl(core.NewQUrl3(tab.htmlURL(), 0))
 }
 
-func (m *MainWindow) copyToClipboard(bool) {
-	widget := m.TabsWidget().CurrentWidget()
-	tab := NewTabFromPointer(widget.Pointer())
-	m.clipboard().SetText(tab.content(), gui.QClipboard__Clipboard)
-	m.showNotification("Gist has been copied to clipboard")
-}
-
 func (m *MainWindow) sysTrayClick(widgets.QSystemTrayIcon__ActivationReason) {
 	if m.IsVisible() {
 		m.Hide()

@@ -15,7 +15,6 @@ type appAction struct {
 	_ func() `constructor:"init"`
 
 	actionInBrowser *widgets.QAction
-	actionClipboard *widgets.QAction
 	actionCopyURL   *widgets.QAction
 	actionQuit      *widgets.QAction
 	actionToolbar   *widgets.QAction
@@ -32,8 +31,6 @@ func (a *appAction) init() {
 	a.actionInBrowser = widgets.NewQAction2("In Browser", a)
 	a.actionInBrowser.SetObjectName("actionInBrowser")
 	a.actionQuit = widgets.NewQAction2("&Quit", a)
-	a.actionClipboard = widgets.NewQAction2("Clipboard", a)
-	a.actionClipboard.SetObjectName("actionClipboard")
 	a.actionCopyURL = widgets.NewQAction2("Copy URL", a)
 	a.actionCopyURL.SetObjectName("actionCopyURL")
 	a.actionQuit = widgets.NewQAction2("&Quit", a)

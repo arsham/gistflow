@@ -6,6 +6,7 @@ package window
 
 import (
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/widgets"
 )
 
 const (
@@ -17,17 +18,17 @@ const (
 type listGistModel struct {
 	core.QAbstractListModel
 
-	_ func()          `constructor:"init"`
-	_ func(*gistItem) `slot:"addGist"`
+	_ func()              `constructor:"init"`
+	_ func(*listGistItem) `slot:"addGist"`
 
 	_ map[int]*core.QByteArray `property:"roles"`
-	_ []*gistItem              `property:"gists"`
+	_ []*listGistItem          `property:"gists"`
 }
 
-// gistItem is one row in the QListView. This is a different gist than
+// listGistItem is one row in the QListView. This is a different gist than
 // gist.Gist, this one does not have enough information as it was received by
 // asking for user's gist list.
-type gistItem struct {
+type listGistItem struct {
 	core.QObject
 
 	_ string `property:"gistID"`
@@ -36,7 +37,7 @@ type gistItem struct {
 }
 
 func init() {
-	gistItem_QRegisterMetaType()
+	listGistItem_QRegisterMetaType()
 }
 
 func (m *listGistModel) init() {
@@ -91,8 +92,41 @@ func (m *listGistModel) roleNames() map[int]*core.QByteArray {
 	return m.Roles()
 }
 
-func (m *listGistModel) addGist(p *gistItem) {
+func (m *listGistModel) addGist(p *listGistItem) {
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.Gists()), len(m.Gists()))
 	m.SetGists(append(m.Gists(), p))
 	m.EndInsertRows()
+}
+
+// file represents one file in a gist.
+type file struct {
+	widgets.QWidget
+
+	_ func()       `constructor:"init"`
+	_ func(string) `signal:"copyToClipboard"`
+
+	_ *widgets.QLabel      `property:"information"`
+	_ *widgets.QTextEdit   `property:"content"`
+	_ *widgets.QPushButton `property:"copy"`
+}
+
+func (f *file) init() {
+	f.SetObjectName("File")
+	vLayout := widgets.NewQVBoxLayout2(f)
+	hLayout := widgets.NewQHBoxLayout()
+	f.SetInformation(widgets.NewQLabel(f, core.Qt__Widget))
+	hLayout.AddWidget(f.Information(), 0, 0)
+	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+	hLayout.AddItem(hSpacer)
+	f.SetCopy(widgets.NewQPushButton(f))
+	f.Copy().SetText("Copy")
+	hLayout.AddWidget(f.Copy(), 0, 0)
+	vLayout.AddLayout(hLayout, 0)
+	f.SetContent(widgets.NewQTextEdit(f))
+	f.Content().SetObjectName("content")
+	vLayout.AddWidget(f.Content(), 0, 0)
+
+	f.Copy().ConnectClicked(func(bool) {
+		f.CopyToClipboard(f.Content().ToPlainText())
+	})
 }

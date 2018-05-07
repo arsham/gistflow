@@ -32,7 +32,6 @@ func (a *appToolbar) init() {
 	a.ConnectSetAction(func(action *appAction) {
 		a.AddActions([]*widgets.QAction{
 			action.actionInBrowser,
-			action.actionClipboard,
 			action.actionCopyURL,
 			action.actionSync,
 		})

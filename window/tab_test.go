@@ -26,6 +26,8 @@ func TestTabCreation(t *testing.T) {
 		testWindowClickCloseTab(t)
 		testShortcutTabClose(t)
 		testRemoveOpenTab(t)
+		testMultipleFileGist(t)
+		testCopyContents(t)
 	})
 }
 
@@ -37,6 +39,7 @@ func getGist(id, label, content string) *gist.Gist {
 		},
 	}
 }
+
 func testTabCreation(t *testing.T) {
 	var (
 		name    = "test"
@@ -70,8 +73,19 @@ func testTabCreation(t *testing.T) {
 	if shownTab.Pointer() != tab.Pointer() {
 		t.Errorf("shownTab.Pointer() = %v, want %v", shownTab.Pointer(), tab.Pointer())
 	}
-	if tab.Editor().ToPlainText() != content {
-		t.Errorf("content = %s, want %s", tab.Editor().ToPlainText(), content)
+
+	if tab.Files() == nil {
+		t.Error("tab.Files() = nil")
+		return
+	}
+	if len(tab.Files()) != 1 {
+		t.Errorf("len(tab.Files()) = %d, want 1", len(tab.Files()))
+		return
+	}
+
+	file := tab.Files()[0]
+	if file.Content().ToPlainText() != content {
+		t.Errorf("content = %s, want %s", file.Content().ToPlainText(), content)
 	}
 	if window.TabsWidget().TabText(index) != label {
 		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), label)
@@ -421,5 +435,111 @@ func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) k
 
 	if _, ok := window.tabGistList[g.ID]; ok {
 		t.Errorf("%s: %s was not removed from the list", name, g.ID)
+	}
+}
+
+func testMultipleFileGist(t *testing.T) {
+	var (
+		name     = "test"
+		content1 = "fLGLysiOuxReut\nASUonvyd"
+		content2 = "zXLpDTgdCZtmxiZDqDQJAcEZ"
+		label1   = "LpqrRCgBBYY"
+		label2   = "ORfVfQPH"
+		g        = &gist.Gist{
+			ID: "vgCWaGVbqWtHaH",
+			Files: map[string]gist.File{
+				label1: gist.File{Content: content1},
+				label2: gist.File{Content: content2},
+			},
+		}
+	)
+
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	tab := NewTab(window.TabsWidget())
+	tab.showGist(window.TabsWidget(), g)
+	index := window.TabsWidget().CurrentIndex()
+
+	if tab.Files() == nil {
+		t.Error("tab.Files() = nil")
+		return
+	}
+	if len(tab.Files()) != 2 {
+		t.Errorf("len(tab.Files()) = %d, want 2", len(tab.Files()))
+		return
+	}
+
+	file1 := tab.Files()[0]
+	if file1.Content().ToPlainText() != content1 {
+		t.Errorf("content1 = %s, want %s", file1.Content().ToPlainText(), content1)
+	}
+	if window.TabsWidget().TabText(index) != label1 {
+		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), label1)
+	}
+	file2 := tab.Files()[1]
+	if file2.Content().ToPlainText() != content2 {
+		t.Errorf("content2 = %s, want %s", file2.Content().ToPlainText(), content2)
+	}
+}
+
+func testCopyContents(t *testing.T) {
+	var (
+		name     = "test"
+		content1 = "fLGLysiOuxReutASUonvyd"
+		content2 = "zXLpDTgdCZtmxiZDqDQJAcEZ"
+		label1   = "LpqrRCgBBYY"
+		label2   = "ORfVfQPH"
+		g        = &gist.Gist{
+			ID: "vgCWaGVbqWtHaH",
+			Files: map[string]gist.File{
+				label1: gist.File{Content: content1},
+				label2: gist.File{Content: content2},
+			},
+		}
+		clpText string
+	)
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.gistService.API = gistTs.URL
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{
+			textFunc: func(text string, mode gui.QClipboard__Mode) {
+				clpText = text
+			},
+		}
+	}
+	id := "XxAV5V0GAbN9j1cha8"
+	window.openGist(id)
+	tab := window.tabGistList[id]
+
+	f1 := tab.Files()[0]
+	f1.Copy().Click()
+	if clpText != content1 {
+		t.Errorf("clpText = %s, want %s", clpText, content1)
+	}
+
+	f2 := tab.Files()[1]
+	f2.Copy().Click()
+	if clpText != content2 {
+		t.Errorf("clpText = %s, want %s", clpText, content2)
 	}
 }

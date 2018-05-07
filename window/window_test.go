@@ -514,10 +514,17 @@ func testViewGist(t *testing.T) (forward bool) {
 	}
 
 	index := window.TabsWidget().CurrentIndex()
-	tab := window.TabsWidget().Widget(index)
-	guts := widgets.NewQPlainTextEditFromPointer(
-		tab.FindChild("content", core.Qt__FindChildrenRecursively).Pointer(),
-	)
+	tab := NewTabFromPointer(window.TabsWidget().Widget(index).Pointer())
+	if tab.Files() == nil {
+		t.Error("tab.Files() = nil")
+		return false
+	}
+	if len(tab.Files()) == 0 {
+		t.Error("len(tab.Files()) = 0")
+		return false
+	}
+
+	guts := tab.Files()[0].Content()
 	if guts.ToPlainText() != content {
 		t.Errorf("content = %s, want %s", guts.ToPlainText(), content)
 		forward = false
