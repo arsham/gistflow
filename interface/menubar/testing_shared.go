@@ -1,4 +1,8 @@
-package window
+// Copyright 2018 Arsham Shirvani <arshamshirvani@gmail.com>. All rights
+// reserved. Use of this source code is governed by the LGPL-v3 License that can
+// be found in the LICENSE file.
+
+package menubar
 
 import (
 	"sync"
@@ -16,7 +20,6 @@ type testRunner struct {
 
 func (t *testRunner) runOnMain(f func()) { f() }
 
-// Run doesn't require serialization.
 func (t *testRunner) Run(f func()) {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)

@@ -89,7 +89,7 @@ func (s *Service) Iter() chan Response {
 	ch := make(chan Response)
 	go func() {
 		perPage := 40
-		for page := 0; ; page += perPage {
+		for page := 0; ; page++ {
 			gs, err := s.List(perPage, page)
 			if err != nil || len(gs) == 0 {
 				break
@@ -149,6 +149,11 @@ func (s *Service) Get(id string) (Gist, error) {
 	if err != nil {
 		return Gist{}, err
 	}
+
+	// TODO: because map keys are not ordered, the file array should become an
+	// ordered map, otherwise there is no guaranty that the first file is the
+	// main gist.
+
 	g.URL = gistURL
 	return g, nil
 }

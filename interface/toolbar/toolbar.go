@@ -2,22 +2,26 @@
 // reserved. Use of this source code is governed by the LGPL-v3 License that can
 // be found in the LICENSE file.
 
-package window
+package toolbar
 
-import "github.com/therecipe/qt/widgets"
+import (
+	"github.com/arsham/gisty/interface/menubar"
+	"github.com/therecipe/qt/widgets"
+)
 
-type appToolbar struct {
+// Toolbar holds all actions that should show on the main toolbar.
+type Toolbar struct {
 	widgets.QToolBar
 
-	_ func()     `constructor:"init"`
-	_ *appAction `property:"action"`
+	_ func()          `constructor:"init"`
+	_ *menubar.Action `property:"action"`
 }
 
 func init() {
-	appToolbar_QRegisterMetaType()
+	Toolbar_QRegisterMetaType()
 }
 
-func (a *appToolbar) init() {
+func (a *Toolbar) init() {
 	a.SetObjectName("toolBar")
 
 	sizePolicy := widgets.NewQSizePolicy2(widgets.QSizePolicy__Preferred, widgets.QSizePolicy__Preferred, widgets.QSizePolicy__DefaultType)
@@ -29,11 +33,11 @@ func (a *appToolbar) init() {
 	a.SetBaseSize2(0, 45)
 	a.SetFloatable(false)
 
-	a.ConnectSetAction(func(action *appAction) {
+	a.ConnectSetAction(func(action *menubar.Action) {
 		a.AddActions([]*widgets.QAction{
-			action.actionInBrowser,
-			action.actionCopyURL,
-			action.actionSync,
+			action.InBrowser,
+			action.CopyURL,
+			action.Sync,
 		})
 	})
 }

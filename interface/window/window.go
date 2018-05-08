@@ -9,6 +9,10 @@ import (
 	"os"
 	"path"
 
+	"github.com/arsham/gisty/interface/menubar"
+	"github.com/arsham/gisty/interface/tab"
+	"github.com/arsham/gisty/interface/toolbar"
+
 	"github.com/arsham/gisty/gist"
 	"github.com/pkg/errors"
 	"github.com/therecipe/qt/core"
@@ -56,16 +60,16 @@ type MainWindow struct {
 	gistService gist.Service
 	logger      boxLogger
 
-	menubar    *menuBar
+	menubar    *menubar.MenuBar
 	dockWidget *widgets.QDockWidget
 	userInput  *widgets.QLineEdit
-	toolBar    *appToolbar
+	toolBar    *toolbar.Toolbar
 	sysTray    *widgets.QSystemTrayIcon
 	icon       *gui.QIcon
 
-	tabGistList map[string]*Tab // gist id to the tab
+	tabGistList map[string]*tab.Tab // gist id to the tab
 
-	model *listGistModel
+	model *tab.ListModel
 	proxy *core.QSortFilterProxyModel
 
 	clipboard func() clipboard
@@ -99,7 +103,7 @@ func (m *MainWindow) setupUI() {
 		m.logger = messagebox(m)
 	}
 	if m.tabGistList == nil {
-		m.tabGistList = make(map[string]*Tab, 0)
+		m.tabGistList = make(map[string]*tab.Tab, 0)
 	}
 
 	centralWidget := widgets.NewQWidget(m, core.Qt__Widget)
@@ -120,7 +124,7 @@ func (m *MainWindow) setupUI() {
 
 	verticalLayout.AddWidget(m.TabsWidget(), 0, 0)
 
-	m.menubar = NewMenuBar(m)
+	m.menubar = menubar.NewMenuBar(m)
 	m.menubar.SetObjectName("menubar")
 	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
 	m.SetMenuBar(m.menubar)
@@ -154,7 +158,7 @@ func (m *MainWindow) setupUI() {
 	m.dockWidget.SetWidget(dockWidgetContents)
 	m.AddDockWidget(core.Qt__LeftDockWidgetArea, m.dockWidget)
 
-	m.toolBar = NewAppToolbar("Toolbar", m)
+	m.toolBar = toolbar.NewToolbar("Toolbar", m)
 	m.AddToolBar(core.Qt__TopToolBarArea, m.toolBar)
 	m.toolBar.SetAction(m.menubar.Actions())
 
@@ -204,7 +208,7 @@ func (m *MainWindow) show() {
 }
 
 func (m *MainWindow) setModel() {
-	m.model = NewListGistModel(nil)
+	m.model = tab.NewListModel(nil)
 
 	m.proxy = core.NewQSortFilterProxyModel(nil)
 	m.proxy.SetSourceModel(m.model)
@@ -250,7 +254,7 @@ func (m *MainWindow) populate() {
 	// TODO: populate in background.
 	for item := range m.gistService.Iter() {
 		foundOne = true
-		var g = NewListGistItem(nil)
+		var g = tab.NewListItem(nil)
 		g.SetGistID(item.ID)
 		g.SetGistURL(item.URL)
 		g.SetDescription(item.Description)
@@ -271,8 +275,8 @@ func (m *MainWindow) openGist(id string) error {
 		return errors.Wrapf(err, "id: %s", id)
 	}
 
-	tab := NewTab(m.TabsWidget())
-	tab.showGist(m.TabsWidget(), &rg)
+	tab := tab.NewTab(m.TabsWidget())
+	tab.ShowGist(m.TabsWidget(), &rg)
 	m.tabGistList[id] = tab
 	tab.ConnectCopyToClipboard(func(text string) {
 		m.clipboard().SetText(text, gui.QClipboard__Clipboard)

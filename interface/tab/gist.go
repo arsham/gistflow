@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by the LGPL-v3 License that can
 // be found in the LICENSE file.
 
-package window
+package tab
 
 import (
 	"github.com/therecipe/qt/core"
@@ -10,41 +10,41 @@ import (
 )
 
 const (
-	description = int(core.Qt__DisplayRole)
-	gistID      = int(core.Qt__UserRole) + 1<<iota
-	gistURL
+	Description = int(core.Qt__DisplayRole)
+	GistID      = int(core.Qt__UserRole) + 1<<iota
+	GistURL
 )
 
-type listGistModel struct {
+type ListModel struct {
 	core.QAbstractListModel
 
-	_ func()              `constructor:"init"`
-	_ func(*listGistItem) `slot:"addGist"`
+	_ func()          `constructor:"init"`
+	_ func(*ListItem) `slot:"addGist"`
 
 	_ map[int]*core.QByteArray `property:"roles"`
-	_ []*listGistItem          `property:"gists"`
+	_ []*ListItem              `property:"gists"`
 }
 
-// listGistItem is one row in the QListView. This is a different gist than
+// ListItem is one row in the QListView. This is a different gist than
 // gist.Gist, this one does not have enough information as it was received by
 // asking for user's gist list.
-type listGistItem struct {
+type ListItem struct {
 	core.QObject
 
-	_ string `property:"gistID"`
-	_ string `property:"gistURL"`
-	_ string `property:"description"`
+	_ string `property:"GistID"`
+	_ string `property:"GistURL"`
+	_ string `property:"Description"`
 }
 
 func init() {
-	listGistItem_QRegisterMetaType()
+	ListItem_QRegisterMetaType()
 }
 
-func (m *listGistModel) init() {
+func (m *ListModel) init() {
 	m.SetRoles(map[int]*core.QByteArray{
-		gistID:      core.NewQByteArray2("gistID", len("gistID")),
-		gistURL:     core.NewQByteArray2("gistURL", len("gistURL")),
-		description: core.NewQByteArray2("description", len("description")),
+		GistID:      core.NewQByteArray2("GistID", len("GistID")),
+		GistURL:     core.NewQByteArray2("GistURL", len("GistURL")),
+		Description: core.NewQByteArray2("Description", len("Description")),
 	})
 
 	m.ConnectData(m.data)
@@ -55,7 +55,7 @@ func (m *listGistModel) init() {
 	m.ConnectAddGist(m.addGist)
 }
 
-func (m *listGistModel) data(index *core.QModelIndex, role int) *core.QVariant {
+func (m *ListModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	if !index.IsValid() {
 		return core.NewQVariant()
 	}
@@ -66,13 +66,13 @@ func (m *listGistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 
 	var p = m.Gists()[index.Row()]
 	switch role {
-	case gistID:
+	case GistID:
 		return core.NewQVariant14(p.GistID())
 
-	case gistURL:
+	case GistURL:
 		return core.NewQVariant14(p.GistURL())
 
-	case description:
+	case Description:
 		return core.NewQVariant14(p.Description())
 
 	default:
@@ -80,26 +80,26 @@ func (m *listGistModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	}
 }
 
-func (m *listGistModel) rowCount(parent *core.QModelIndex) int {
+func (m *ListModel) rowCount(parent *core.QModelIndex) int {
 	return len(m.Gists())
 }
 
-func (m *listGistModel) columnCount(parent *core.QModelIndex) int {
+func (m *ListModel) columnCount(parent *core.QModelIndex) int {
 	return 1
 }
 
-func (m *listGistModel) roleNames() map[int]*core.QByteArray {
+func (m *ListModel) roleNames() map[int]*core.QByteArray {
 	return m.Roles()
 }
 
-func (m *listGistModel) addGist(p *listGistItem) {
+func (m *ListModel) addGist(p *ListItem) {
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.Gists()), len(m.Gists()))
 	m.SetGists(append(m.Gists(), p))
 	m.EndInsertRows()
 }
 
-// file represents one file in a gist.
-type file struct {
+// File represents one file in a gist.
+type File struct {
 	widgets.QWidget
 
 	_ func()       `constructor:"init"`
@@ -110,7 +110,7 @@ type file struct {
 	_ *widgets.QPushButton `property:"copy"`
 }
 
-func (f *file) init() {
+func (f *File) init() {
 	f.SetObjectName("File")
 	vLayout := widgets.NewQVBoxLayout2(f)
 	hLayout := widgets.NewQHBoxLayout()

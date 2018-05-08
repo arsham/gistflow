@@ -2,13 +2,14 @@
 // reserved. Use of this source code is governed by the LGPL-v3 License that can
 // be found in the LICENSE file.
 
-package window
+package menubar
 
 import (
 	"github.com/therecipe/qt/widgets"
 )
 
-type menuBar struct {
+// MenuBar holds actions for toolbars and menubar.
+type MenuBar struct {
 	widgets.QMenuBar
 
 	_ func()     `constructor:"init"`
@@ -19,42 +20,42 @@ type menuBar struct {
 	_ *widgets.QMenu `property:"options"`
 	_ *widgets.QMenu `property:"window"`
 	_ *widgets.QMenu `property:"edit"`
-	_ *appAction     `property:"actions"`
+	_ *Action        `property:"actions"`
 }
 
 func init() {
-	menuBar_QRegisterMetaType()
+	MenuBar_QRegisterMetaType()
 }
 
-func (m *menuBar) init() {
-	m.SetActions(NewAppAction(m))
+func (m *MenuBar) init() {
+	m.SetActions(NewAction(m))
 
 	m.SetOptions(m.AddMenu2("&Options"))
 	m.Options().SetObjectName("menuOptions")
 	m.Options().AddActions([]*widgets.QAction{
-		m.Actions().actionSettings,
-		m.Actions().actionSync,
+		m.Actions().Settings,
+		m.Actions().Sync,
 		m.AddSeparator(),
-		m.Actions().actionQuit,
+		m.Actions().Quit,
 	})
 
 	m.SetEdit(m.AddMenu2("&Edit"))
 	m.Edit().SetObjectName("edit")
 	m.Edit().AddActions([]*widgets.QAction{
-		m.Actions().actionInBrowser,
-		m.Actions().actionCopyURL,
+		m.Actions().InBrowser,
+		m.Actions().CopyURL,
 	})
 
 	m.SetWindow(m.AddMenu2("&Window"))
 	m.Window().SetObjectName("menuWindow")
 	m.Window().AddActions([]*widgets.QAction{
-		m.Actions().actionToolbar,
-		m.Actions().actionGistList,
+		m.Actions().Toolbar,
+		m.Actions().GistList,
 	})
 
-	m.Actions().actionCopyURL.ConnectTriggered(m.CopyURLToClipboard)
-	m.Actions().actionQuit.ConnectTriggered(func(bool) {
+	m.Actions().CopyURL.ConnectTriggered(m.CopyURLToClipboard)
+	m.Actions().Quit.ConnectTriggered(func(bool) {
 		m.Quit()
 	})
-	m.Actions().actionInBrowser.ConnectTriggered(m.OpenInBrowser)
+	m.Actions().InBrowser.ConnectTriggered(m.OpenInBrowser)
 }

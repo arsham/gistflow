@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/arsham/gisty/interface/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -20,15 +21,15 @@ func (m *MainWindow) userInputTextChange(text string) {
 
 func (m *MainWindow) copyURLToClipboard(bool) {
 	widget := m.TabsWidget().CurrentWidget()
-	tab := NewTabFromPointer(widget.Pointer())
-	m.clipboard().SetText(tab.url(), gui.QClipboard__Clipboard)
+	tab := tab.NewTabFromPointer(widget.Pointer())
+	m.clipboard().SetText(tab.URL(), gui.QClipboard__Clipboard)
 	m.showNotification("URL has been copied to clipboard")
 }
 
 func (m *MainWindow) openInBrowser(bool) {
 	widget := m.TabsWidget().CurrentWidget()
-	tab := NewTabFromPointer(widget.Pointer())
-	gui.QDesktopServices_OpenUrl(core.NewQUrl3(tab.htmlURL(), 0))
+	tab := tab.NewTabFromPointer(widget.Pointer())
+	gui.QDesktopServices_OpenUrl(core.NewQUrl3(tab.HTMLURL(), 0))
 }
 
 func (m *MainWindow) sysTrayClick(widgets.QSystemTrayIcon__ActivationReason) {
@@ -69,7 +70,7 @@ func (m *MainWindow) openSelectedGist(event *gui.QKeyEvent) {
 	switch core.Qt__Key(event.Key()) {
 	case core.Qt__Key_Enter, core.Qt__Key_Return:
 		index := m.GistList().CurrentIndex()
-		err := m.openGist(index.Data(gistID).ToString())
+		err := m.openGist(index.Data(tab.GistID).ToString())
 		if err != nil {
 			m.logger.Error(err.Error())
 		}
@@ -79,7 +80,7 @@ func (m *MainWindow) openSelectedGist(event *gui.QKeyEvent) {
 
 func (m *MainWindow) gistListDoubleClickEvent(*core.QModelIndex) {
 	index := m.GistList().CurrentIndex()
-	err := m.openGist(index.Data(gistID).ToString())
+	err := m.openGist(index.Data(tab.GistID).ToString())
 	if err != nil {
 		m.logger.Error(err.Error())
 	}

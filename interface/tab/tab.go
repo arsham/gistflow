@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by the LGPL-v3 License that can
 // be found in the LICENSE file.
 
-package window
+package tab
 
 import (
 	"github.com/arsham/gisty/gist"
@@ -17,7 +17,7 @@ type Tab struct {
 	_ func(string) `signal:"copyToClipboard"`
 
 	_ *widgets.QVBoxLayout `property:"vBoxLayout"`
-	_ []file               `property:"files"`
+	_ []File               `property:"files"`
 	_ *gist.Gist           `property:"gist"`
 }
 
@@ -32,7 +32,8 @@ func (t *Tab) init() {
 	t.SetLayout(layout)
 }
 
-func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
+// ShowGist shows each file in a separate container.
+func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	for label, g := range g.Files {
 		f := NewFile(t, 0)
 		f.Content().SetText(g.Content)
@@ -49,10 +50,12 @@ func (t *Tab) showGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	t.SetGist(g)
 }
 
-func (t Tab) url() string {
+// URL returns the main gist's URL.
+func (t Tab) URL() string {
 	return t.Gist().URL
 }
 
-func (t Tab) htmlURL() string {
+// HTMLURL returns the URL to the html page of the gist.
+func (t Tab) HTMLURL() string {
 	return t.Gist().HTMLURL
 }

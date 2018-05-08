@@ -18,6 +18,7 @@ import (
 	"github.com/therecipe/qt/testlib"
 
 	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/interface/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
@@ -28,36 +29,6 @@ func TestMain(m *testing.M) {
 	app = widgets.NewQApplication(len(os.Args), os.Args)
 	go func() { app.Exit(m.Run()) }()
 	app.Exec()
-}
-
-func TestMainWindow(t *testing.T) {
-	type testCase struct {
-		name string
-		f    func(t *testing.T) bool
-	}
-	tRunner.Run(func() {
-		tcs := []testCase{
-			{"testWindowStartupWidgets", testWindowStartupWidgets},
-			{"testWindowModel", testWindowModel},
-			{"testPopulateError", testPopulateError},
-			{"testPopulate", testPopulate},
-			{"testLoadingGeometry", testLoadingGeometry},
-			{"testFilteringGists", testFilteringGists},
-			{"testListViewKeys", testListViewKeys},
-			{"testViewGist", testViewGist},
-			{"testClickViewGist", testClickViewGist},
-			{"testExchangingFocus", testExchangingFocus},
-			{"testOpeningGistTwice", testOpeningGistTwice},
-			{"testWindowStartupFocus", testWindowStartupFocus},
-			{"testTypingOnListView", testTypingOnListView},
-		}
-		for _, tc := range tcs {
-			if !tc.f(t) {
-				t.Errorf("stopped at %s", tc.name)
-				return
-			}
-		}
-	})
 }
 
 type logger struct {
@@ -128,12 +99,13 @@ func setup(t *testing.T, name string, input []gist.Response, answers int) (*http
 }
 
 // testing vanilla setup
-func testWindowStartupWidgets(t *testing.T) bool {
+func TestWindowStartupWidgets(t *testing.T) { tRunner.Run(func() { testWindowStartupWidgets(t) }) }
+func testWindowStartupWidgets(t *testing.T) {
 	name := "test"
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 	oldLogger := window.logger
@@ -150,19 +122,19 @@ func testWindowStartupWidgets(t *testing.T) bool {
 
 	if window == nil {
 		t.Error("window = nil, want *widgets.QMainWindow")
-		return false
+		return
 	}
 	if window.icon == nil {
 		t.Error("window.icon = nil, want *gui.QIcon")
-		return false
+		return
 	}
 	if window.menubar == nil {
 		t.Error("window.menubar = nil, want *widgets.QMenuBar")
-		return false
+		return
 	}
 	if window.sysTray == nil {
 		t.Error("window.sysTray = nil, want *widgets.QSystemTrayIcon")
-		return false
+		return
 	}
 	if window.sysTray.Icon() == nil {
 		t.Error("window.sysTray.Icon() = nil, want *gui.QIcon")
@@ -176,33 +148,33 @@ func testWindowStartupWidgets(t *testing.T) bool {
 
 	if window.StatusArea() == nil {
 		t.Error("window.StatusArea() = nil, want *widgets.QStatusBar")
-		return false
+		return
 	}
 	if window.TabsWidget() == nil {
 		t.Error("window.TabsWidget() = nil, want *widgets.QTabWidget")
-		return false
+		return
 	}
 	if !window.TabsWidget().IsMovable() {
 		t.Error("window.TabsWidget() is not movable")
 	}
 	if window.tabGistList == nil {
 		t.Error("window.tabGistList = nil, want []*tabGist")
-		return false
+		return
 	}
 	if window.GistList() == nil {
 		t.Error("window.GistList() = nil, want *widgets.QListView")
-		return false
+		return
 	}
 	if window.dockWidget == nil {
 		t.Error("window.dockWidget = nil, want *widgets.QDockWidget")
-		return false
+		return
 	}
 	if window.TabsWidget().Count() < 1 {
 		t.Errorf("window.TabsWidget().Count() = %d, want at least 1", window.TabsWidget().Count())
 	}
 	if window.userInput == nil {
 		t.Error("window.userInput = nil, want *widgets.QDockWidget")
-		return false
+		return
 	}
 
 	if !window.userInput.IsClearButtonEnabled() {
@@ -211,28 +183,28 @@ func testWindowStartupWidgets(t *testing.T) bool {
 
 	if window.clipboard() == nil {
 		t.Error("window.clipboard() = nil, want *gui.QClipboard")
-		return false
+		return
 	}
-	return true
 }
 
-func testWindowModel(t *testing.T) bool {
+func TestWindowModel(t *testing.T) { tRunner.Run(func() { testWindowModel(t) }) }
+func testWindowModel(t *testing.T) {
 	name := "test"
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 	window.setModel()
 	if window.model == nil {
 		t.Error("window.model = nil, want listGistModel")
-		return false
+		return
 	}
 	model := window.model
 	if window.proxy == nil {
 		t.Error("window.proxy = nil, want *core.QSortFilterProxyModel")
-		return false
+		return
 	}
 	if window.proxy.SourceModel().Pointer() != model.Pointer() {
 		t.Errorf("window.proxy.SourceModel().Pointer() = %v, want %v", window.proxy.SourceModel().Pointer(), model.Pointer())
@@ -242,15 +214,15 @@ func testWindowModel(t *testing.T) bool {
 	}
 	if model.Pointer() != window.model.Pointer() {
 		t.Errorf("model.Pointer() = %v, want %v", model.Pointer(), window.model.Pointer())
-		return false
+		return
 	}
 	if window.GistList().Model().Pointer() != window.proxy.Pointer() {
 		t.Errorf("window.GistList().Model().Pointer() = %d, want %d", window.GistList().Model().Pointer(), window.proxy.Pointer())
 	}
-	return true
 }
 
-func testPopulateError(t *testing.T) bool {
+func TestPopulateError(t *testing.T) { tRunner.Run(func() { testPopulateError(t) }) }
+func testPopulateError(t *testing.T) {
 	var (
 		name   = "test"
 		called bool
@@ -258,7 +230,7 @@ func testPopulateError(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	window.gistService.Logger = nil
 	defer cleanup()
@@ -274,7 +246,7 @@ func testPopulateError(t *testing.T) bool {
 	window.populate()
 	if window.gistService.Logger == nil {
 		t.Error("window.gistService.Logger is not assigned")
-		return false
+		return
 	}
 	if c := window.model.RowCount(nil); c != 0 {
 		t.Errorf("window.model.RowCount() = %d, want 0", c)
@@ -285,11 +257,10 @@ func testPopulateError(t *testing.T) bool {
 	if window.gistService.CacheDir == "" {
 		t.Error("window.gistService.CacheDir is empty")
 	}
-
-	return true
 }
 
-func testPopulate(t *testing.T) bool {
+func TestPopulate(t *testing.T) { tRunner.Run(func() { testPopulate(t) }) }
+func testPopulate(t *testing.T) {
 	name := "test"
 	size := 5
 	gres := gist.Response{
@@ -299,7 +270,7 @@ func testPopulate(t *testing.T) bool {
 	ts, window, cleanup, err := setup(t, name, []gist.Response{gres}, size)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
@@ -309,28 +280,28 @@ func testPopulate(t *testing.T) bool {
 
 	if c := window.model.RowCount(nil); c != size {
 		t.Errorf("window.model.RowCount() = %d, want %d", c, size)
-		return false
+		return
 	}
 
 	model := window.GistList().Model()
 	item := model.Index(0, 0, core.NewQModelIndex())
-	desc := item.Data(description).ToString()
-	id := item.Data(gistID).ToString()
+	desc := item.Data(tab.Description).ToString()
+	id := item.Data(tab.GistID).ToString()
 	if desc != gres.Description {
 		t.Errorf("Display = %s, want %s", desc, gres.Description)
 	}
 	if id != gres.ID {
 		t.Errorf("Display = %s, want %s", id, gres.ID)
 	}
-	return true
 }
 
-func testLoadingGeometry(t *testing.T) bool {
+func TestLoadingGeometry(t *testing.T) { tRunner.Run(func() { testLoadingGeometry(t) }) }
+func testLoadingGeometry(t *testing.T) {
 	name := "test"
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -363,11 +334,10 @@ func testLoadingGeometry(t *testing.T) bool {
 	check("to make sure: geometry.Y()", window.Geometry().Y(), y)
 	check("to make sure: geometry.Width()", window.Geometry().Width(), w)
 	check("to make sure: geometry.Height()", window.Geometry().Height(), h)
-
-	return true
 }
 
-func testFilteringGists(t *testing.T) bool {
+func TestFilteringGists(t *testing.T) { tRunner.Run(func() { testFilteringGists(t) }) }
+func testFilteringGists(t *testing.T) {
 	name := "test"
 	res := []gist.Response{
 		gist.Response{
@@ -382,7 +352,7 @@ func testFilteringGists(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, res, 1)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -393,12 +363,12 @@ func testFilteringGists(t *testing.T) bool {
 	index := core.NewQModelIndex()
 	if l := window.proxy.RowCount(index); l != 1 {
 		t.Errorf("proxy row count = %d, want %d", l, 1)
-		return false
+		return
 	}
-	return true
 }
 
-func testListViewKeys(t *testing.T) bool {
+func TestListViewKeys(t *testing.T) { tRunner.Run(func() { testListViewKeys(t) }) }
+func testListViewKeys(t *testing.T) {
 	name := "test"
 	res := []gist.Response{
 		gist.Response{
@@ -409,7 +379,7 @@ func testListViewKeys(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, res, 10)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -428,7 +398,7 @@ func testListViewKeys(t *testing.T) bool {
 	}
 	if !window.GistList().HasFocus() {
 		t.Errorf("window.GistList() didn't get focused")
-		return false
+		return
 	}
 
 	if i := window.GistList().CurrentIndex().Row(); i != 0 {
@@ -446,11 +416,10 @@ func testListViewKeys(t *testing.T) bool {
 	if i := window.GistList().CurrentIndex().Row(); i != 2 {
 		t.Errorf("window.GistList().CurrentIndex().Row() = %d, want 2", i)
 	}
-
-	return true
 }
 
-func testViewGist(t *testing.T) (forward bool) {
+func TestViewGist(t *testing.T) { tRunner.Run(func() { testViewGist(t) }) }
+func testViewGist(t *testing.T) {
 	var (
 		called   bool
 		name     = "test"
@@ -459,7 +428,6 @@ func testViewGist(t *testing.T) (forward bool) {
 		fileName = "LpqrRCgBBYY"
 		content  = "fLGLysiOuxReut\nASUonvyd"
 	)
-	forward = true
 
 	files := map[string]gist.File{
 		fileName: gist.File{Content: content},
@@ -477,7 +445,6 @@ func testViewGist(t *testing.T) (forward bool) {
 		b, err := json.Marshal(gres)
 		if err != nil {
 			t.Error(err)
-			forward = false
 			return
 		}
 		w.Write(b)
@@ -487,56 +454,52 @@ func testViewGist(t *testing.T) (forward bool) {
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 	window.gistService.API = gistTs.URL
 
 	if window.TabsWidget().Count() != 1 {
 		t.Errorf("window.TabsWidget().Count() = %d, want 1", window.TabsWidget().Count())
-		return false
+		return
 	}
 
 	if err := window.openGist(badID); err == nil {
 		t.Errorf("window.openGist(%s) = nil, want error", badID)
-		forward = false
 	}
 
 	if err := window.openGist(id); err != nil {
 		t.Errorf("window.openGist(%s) = %s, want nil", id, err)
-		forward = false
 	}
 
 	newIndex := 2
 	if window.TabsWidget().Count() != newIndex {
 		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), newIndex)
-		return false
+		return
 	}
 
 	index := window.TabsWidget().CurrentIndex()
-	tab := NewTabFromPointer(window.TabsWidget().Widget(index).Pointer())
+	tab := tab.NewTabFromPointer(window.TabsWidget().Widget(index).Pointer())
 	if tab.Files() == nil {
 		t.Error("tab.Files() = nil")
-		return false
+		return
 	}
 	if len(tab.Files()) == 0 {
 		t.Error("len(tab.Files()) = 0")
-		return false
+		return
 	}
 
 	guts := tab.Files()[0].Content()
 	if guts.ToPlainText() != content {
 		t.Errorf("content = %s, want %s", guts.ToPlainText(), content)
-		forward = false
 	}
 	if window.TabsWidget().TabText(index) != fileName {
 		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), fileName)
-		forward = false
 	}
-	return forward
 }
 
-func testClickViewGist(t *testing.T) bool {
+func TestClickViewGist(t *testing.T) { tRunner.Run(func() { testClickViewGist(t) }) }
+func testClickViewGist(t *testing.T) {
 	name := "test"
 	var called bool
 	gres := gist.Response{
@@ -562,7 +525,7 @@ func testClickViewGist(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -606,13 +569,12 @@ func testClickViewGist(t *testing.T) bool {
 	}
 
 	if !called {
-		return false
+		return
 	}
-
-	return true
 }
 
-func testExchangingFocus(t *testing.T) bool {
+func TestExchangingFocus(t *testing.T) { tRunner.Run(func() { testExchangingFocus(t) }) }
+func testExchangingFocus(t *testing.T) {
 	name := "test"
 	gres := gist.Response{
 		ID:          "QXhJNchXAK",
@@ -621,7 +583,7 @@ func testExchangingFocus(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -674,11 +636,10 @@ func testExchangingFocus(t *testing.T) bool {
 			t.Errorf("%x: userInput didn't loose focus", tc)
 		}
 	}
-
-	return true
 }
 
-func testOpeningGistTwice(t *testing.T) bool {
+func TestOpeningGistTwice(t *testing.T) { tRunner.Run(func() { testOpeningGistTwice(t) }) }
+func testOpeningGistTwice(t *testing.T) {
 	var (
 		name = "test"
 		id1  = "mbzsNwJS"
@@ -704,7 +665,7 @@ func testOpeningGistTwice(t *testing.T) bool {
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -734,16 +695,15 @@ func testOpeningGistTwice(t *testing.T) bool {
 	if window.TabsWidget().CurrentIndex() != 1 {
 		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want 1", window.TabsWidget().CurrentIndex())
 	}
-
-	return true
 }
 
-func testWindowStartupFocus(t *testing.T) bool {
+func TestWindowStartupFocus(t *testing.T) { tRunner.Run(func() { testWindowStartupFocus(t) }) }
+func testWindowStartupFocus(t *testing.T) {
 	name := "test"
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -753,16 +713,15 @@ func testWindowStartupFocus(t *testing.T) bool {
 	if !window.userInput.HasFocus() {
 		t.Errorf("focus is on %s, want %s", app.FocusWidget().ObjectName(), window.userInput.ObjectName())
 	}
-
-	return true
 }
 
-func testTypingOnListView(t *testing.T) bool {
+func TestTypingOnListView(t *testing.T) { tRunner.Run(func() { testTypingOnListView(t) }) }
+func testTypingOnListView(t *testing.T) {
 	name := "test"
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
-		return false
+		return
 	}
 	defer cleanup()
 
@@ -791,6 +750,94 @@ func testTypingOnListView(t *testing.T) bool {
 			t.Errorf("window.userInput.Text() = `%s`, want `%s`", window.userInput.Text(), tc.want)
 		}
 	}
+}
 
-	return true
+func TestToggle(t *testing.T) { tRunner.Run(func() { testToggle(t) }) }
+func testToggle(t *testing.T) {
+	name := "test"
+	window := NewMainWindow(nil, 0)
+	window.name = name
+	defer window.Hide()
+	app.SetActiveWindow(window)
+	window.Show()
+
+	if window.IsHidden() {
+		t.Error("window is not shown")
+	}
+	window.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if !window.IsHidden() {
+		t.Error("window is not hidden")
+	}
+	window.sysTray.Activated(widgets.QSystemTrayIcon__Trigger)
+	if window.IsHidden() {
+		t.Error("window is not shown")
+	}
+}
+
+func TestCopyURL(t *testing.T) { tRunner.Run(func() { testCopyURL(t) }) }
+func testCopyURL(t *testing.T) {
+	var (
+		name     = "test"
+		id1      = "wqWKsfoQevEbGjhmz"
+		content  = "AFMQydAKTiJLa"
+		id2      = "yuaosJCTsGUqEldvigi"
+		api, url string
+		clpText  string
+	)
+
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url = fmt.Sprintf("%s%s", api, r.URL.Path)
+		gres := gist.Gist{
+			Files: map[string]gist.File{
+				"vtsmQN": gist.File{Content: content},
+			},
+		}
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.gistService.API = gistTs.URL
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{
+			textFunc: func(text string, mode gui.QClipboard__Mode) {
+				clpText = text
+			},
+		}
+	}
+	api = gistTs.URL
+
+	c := window.menubar.Actions().CopyURL
+	if err := window.openGist(id1); err != nil {
+		t.Errorf("window.openGist(%s) = %v, want nil", id1, err)
+	}
+	url1 := url
+	if err := window.openGist(id2); err != nil {
+		t.Errorf("window.openGist(%s) = %v, want nil", id2, err)
+	}
+	url2 := url
+
+	tab1, tab2 := window.tabGistList[id1], window.tabGistList[id2]
+	window.TabsWidget().SetCurrentWidget(tab1)
+
+	c.Trigger()
+	if clpText != url1 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, url1)
+	}
+
+	window.TabsWidget().SetCurrentWidget(tab2)
+	c.Trigger()
+	if clpText != url2 {
+		t.Errorf("clpText = `%s`, want `%s`", clpText, url2)
+	}
 }
