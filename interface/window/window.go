@@ -9,11 +9,12 @@ import (
 	"os"
 	"path"
 
+	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/interface/gistlist"
 	"github.com/arsham/gisty/interface/menubar"
+	"github.com/arsham/gisty/interface/searchbox"
 	"github.com/arsham/gisty/interface/tab"
 	"github.com/arsham/gisty/interface/toolbar"
-
-	"github.com/arsham/gisty/gist"
 	"github.com/pkg/errors"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -34,45 +35,25 @@ type MainWindow struct {
 
 	_ func() `constructor:"setupUI"`
 
-	_ func() `slot:"openSelectedGist"`
-	_ func() `slot:"closeTab"`
-
-	_ func() `slot:"userInputChange"`
-	_ func() `slot:"userInputTextChange"`
-
-	_ func() `slot:"gistListDoubleClickEvent"`
-	_ func() `slot:"gistListKeyReleaseEvent"`
-
-	_ func(string) `slot:"copyToClipboard"`
-	_ func()       `slot:"copyURLToClipboard"`
-	_ func()       `slot:"openInBrowser"`
-
-	_ func() `slot:"sysTrayClick"`
-
-	_ *widgets.QApplication `property:"app"`
-	_ *core.QSettings       `property:"settings"`
-	_ *widgets.QTabWidget   `property:"tabsWidget"`
-	_ *widgets.QStatusBar   `property:"statusArea"` // named this way to avoid collision
-	_ *widgets.QListView    `property:"gistList"`
-
-	name string // namespace in setting file
-
-	gistService gist.Service
+	name        string // namespace in setting file
+	app         *widgets.QApplication
+	settings    *core.QSettings
 	logger      boxLogger
+	gistService gist.Service
 
 	menubar    *menubar.MenuBar
-	dockWidget *widgets.QDockWidget
-	userInput  *widgets.QLineEdit
 	toolBar    *toolbar.Toolbar
 	sysTray    *widgets.QSystemTrayIcon
 	icon       *gui.QIcon
+	statusArea *widgets.QStatusBar // named this way to avoid collision
+
+	searchbox  *searchbox.Dialog
+	gistList   *gistlist.Container
+	dockWidget *widgets.QDockWidget
+	tabsWidget *widgets.QTabWidget
 
 	tabGistList map[string]*tab.Tab // gist id to the tab
-
-	model *tab.ListModel
-	proxy *core.QSortFilterProxyModel
-
-	clipboard func() clipboard
+	clipboard   func() clipboard
 }
 
 func init() {
@@ -85,11 +66,10 @@ func (m *MainWindow) Display() error {
 		m.name = "gisty"
 	}
 
-	m.show()
-	m.setModel()
-	m.SetSettings(getSettings(m.name))
+	m.settings = getSettings(m.name)
 	m.loadSettings()
 	go m.populate()
+	m.Show()
 	widgets.QApplication_Exec()
 	return nil
 }
@@ -111,26 +91,26 @@ func (m *MainWindow) setupUI() {
 	verticalLayout := widgets.NewQVBoxLayout2(centralWidget)
 	verticalLayout.SetObjectName("verticalLayout")
 
-	m.SetTabsWidget(widgets.NewQTabWidget(centralWidget))
-	m.TabsWidget().SetObjectName("tabWidget")
-	m.TabsWidget().SetTabsClosable(true)
-	m.TabsWidget().SetMovable(true)
+	m.tabsWidget = widgets.NewQTabWidget(centralWidget)
+	m.tabsWidget.SetObjectName("tabWidget")
+	m.tabsWidget.SetTabsClosable(true)
+	m.tabsWidget.SetMovable(true)
 
-	tab1 := widgets.NewQWidget(m.TabsWidget(), core.Qt__Widget)
+	tab1 := widgets.NewQWidget(m.tabsWidget, core.Qt__Widget)
 	tab1.SetObjectName("Untitled")
-	m.TabsWidget().AddTab(tab1, "Untitled")
+	m.tabsWidget.AddTab(tab1, "Untitled")
 	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 
-	verticalLayout.AddWidget(m.TabsWidget(), 0, 0)
+	verticalLayout.AddWidget(m.tabsWidget, 0, 0)
 
 	m.menubar = menubar.NewMenuBar(m)
 	m.menubar.SetObjectName("menubar")
 	m.menubar.SetGeometry(core.NewQRect4(0, 0, 1043, 30))
 	m.SetMenuBar(m.menubar)
 
-	m.SetStatusArea(widgets.NewQStatusBar(m))
-	m.StatusArea().SetObjectName("statusarea")
-	m.SetStatusBar(m.StatusArea())
+	m.statusArea = widgets.NewQStatusBar(m)
+	m.statusArea.SetObjectName("statusarea")
+	m.SetStatusBar(m.statusArea)
 
 	m.dockWidget = widgets.NewQDockWidget("Gists", m, 0)
 	m.dockWidget.SetObjectName("dockWidget")
@@ -143,15 +123,10 @@ func (m *MainWindow) setupUI() {
 	verticalLayout2 := widgets.NewQVBoxLayout2(dockWidgetContents)
 	verticalLayout2.SetObjectName("verticalLayout2")
 
-	m.userInput = widgets.NewQLineEdit(dockWidgetContents)
-	m.userInput.SetObjectName("userInput")
-	m.userInput.SetClearButtonEnabled(true)
+	m.gistList = gistlist.NewContainer(dockWidgetContents)
+	m.gistList.SetObjectName("gistList")
 
-	m.SetGistList(widgets.NewQListView(dockWidgetContents))
-	m.GistList().SetObjectName("gistList")
-
-	verticalLayout2.AddWidget(m.userInput, 0, 0)
-	verticalLayout2.AddWidget(m.GistList(), 0, 0)
+	verticalLayout2.AddWidget(m.gistList, 0, 0)
 	m.dockWidget.SetWidget(dockWidgetContents)
 
 	m.dockWidget.SetWidget(dockWidgetContents)
@@ -171,65 +146,59 @@ func (m *MainWindow) setupUI() {
 	m.SetWindowIcon(m.icon)
 	filter := m.tabMovementEventFilter()
 
-	m.userInput.ConnectKeyPressEvent(m.userInputChange)
-	m.userInput.ConnectKeyReleaseEvent(m.openSelectedGist)
-	m.userInput.ConnectTextChanged(m.userInputTextChange)
-	m.userInput.InstallEventFilter(filter)
+	m.gistList.ConnectDoubleClicked(m.gistListDoubleClickEvent)
+	m.gistList.ConnectKeyReleaseEvent(m.openSelectedGist)
+	m.gistList.InstallEventFilter(filter)
 
-	m.GistList().ConnectKeyReleaseEvent(m.gistListKeyReleaseEvent)
-	m.GistList().ConnectDoubleClicked(m.gistListDoubleClickEvent)
-	m.GistList().ConnectKeyReleaseEvent(m.openSelectedGist)
-	m.GistList().InstallEventFilter(filter)
-
-	m.TabsWidget().InstallEventFilter(filter)
-	m.TabsWidget().ConnectTabCloseRequested(m.closeTab)
+	m.tabsWidget.InstallEventFilter(filter)
+	m.tabsWidget.ConnectTabCloseRequested(m.closeTab)
 
 	m.menubar.ConnectCopyURLToClipboard(m.copyURLToClipboard)
 	m.menubar.ConnectOpenInBrowser(m.openInBrowser)
 	m.menubar.ConnectQuit(func() {
-		m.App().Quit()
+		m.app.Quit()
 	})
 
 	m.sysTray.ConnectActivated(m.sysTrayClick)
 	m.clipboard = func() clipboard {
-		return m.App().Clipboard()
+		return m.app.Clipboard()
 	}
+
+	m.searchbox = searchbox.NewDialog(m, 0)
+	m.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
+		if event.Key() == int(core.Qt__Key_P) && event.Modifiers() == core.Qt__ControlModifier {
+			m.searchbox.View(m.Geometry())
+		}
+	})
+	m.searchbox.ConnectOpenGist(m.openGistByID)
 }
+
+// GistList returns the associated gistList.
+func (m *MainWindow) GistList() *gistlist.Container { return m.gistList }
+
+// TabsWidget returns the associated tabsWidget.
+func (m *MainWindow) TabsWidget() *widgets.QTabWidget { return m.tabsWidget }
 
 // SetGistService sets the service required for public api interactions.
-func (m *MainWindow) SetGistService(g gist.Service) {
-	m.gistService = g
-}
+func (m *MainWindow) SetGistService(g gist.Service) { m.gistService = g }
 
-func (m *MainWindow) show() {
-	m.Show()
-	m.userInput.SetFocus2()
-}
-
-func (m *MainWindow) setModel() {
-	m.model = tab.NewListModel(nil)
-
-	m.proxy = core.NewQSortFilterProxyModel(nil)
-	m.proxy.SetSourceModel(m.model)
-	m.proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
-
-	m.GistList().SetModel(m.proxy)
-}
+// SetApp sets the app instance.
+func (m *MainWindow) SetApp(app *widgets.QApplication) { m.app = app }
 
 func (m *MainWindow) loadSettings() {
 	tmp := widgets.NewQWidget(nil, 0)
 	tmp.SetGeometry2(100, 100, 600, 600)
 	defSize := tmp.SaveGeometry()
-	sizeVar := m.Settings().Value(mainWindowGeometry, core.NewQVariant15(defSize))
+	sizeVar := m.settings.Value(mainWindowGeometry, core.NewQVariant15(defSize))
 	m.RestoreGeometry(sizeVar.ToByteArray())
-	m.App().ConnectAboutToQuit(m.saveSettings)
+	m.app.ConnectAboutToQuit(m.saveSettings)
 }
 
 func (m *MainWindow) saveSettings() {
 	current := m.SaveGeometry()
 	currentVar := core.NewQVariant15(current.QByteArray_PTR())
-	m.Settings().SetValue(mainWindowGeometry, currentVar)
-	m.Settings().Sync()
+	m.settings.SetValue(mainWindowGeometry, currentVar)
+	m.settings.Sync()
 }
 
 func getSettings(name string) *core.QSettings {
@@ -252,18 +221,8 @@ func (m *MainWindow) populate() {
 	}
 	for item := range m.gistService.Iter() {
 		foundOne = true
-		var l = tab.NewListItem(nil)
-		l.SetGistID(item.ID)
-		l.SetGistURL(item.URL)
-		description := item.Description
-		if description == "" {
-			for n := range item.Files {
-				description = n
-				break
-			}
-		}
-		l.SetDescription(description)
-		m.model.AddGist(l)
+		m.searchbox.Add(item)
+		m.gistList.Add(item)
 	}
 	if !foundOne {
 		m.logger.Error("didn't find any gists")
@@ -272,7 +231,7 @@ func (m *MainWindow) populate() {
 
 func (m *MainWindow) openGist(id string) error {
 	if g, ok := m.tabGistList[id]; ok {
-		m.TabsWidget().SetCurrentWidget(g)
+		m.tabsWidget.SetCurrentWidget(g)
 		return nil
 	}
 	rg, err := m.gistService.Get(id)
@@ -280,8 +239,8 @@ func (m *MainWindow) openGist(id string) error {
 		return errors.Wrapf(err, "id: %s", id)
 	}
 
-	tab := tab.NewTab(m.TabsWidget())
-	tab.ShowGist(m.TabsWidget(), &rg)
+	tab := tab.NewTab(m.tabsWidget)
+	tab.ShowGist(m.tabsWidget, &rg)
 	m.tabGistList[id] = tab
 	tab.ConnectCopyToClipboard(func(text string) {
 		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
@@ -290,7 +249,7 @@ func (m *MainWindow) openGist(id string) error {
 }
 
 func (m *MainWindow) tabIDFromIndex(index int) string {
-	tab := m.TabsWidget().Widget(index)
+	tab := m.tabsWidget.Widget(index)
 	if tab.Pointer() == nil {
 		return ""
 	}
@@ -305,7 +264,7 @@ func (m *MainWindow) tabIDFromIndex(index int) string {
 
 func (m *MainWindow) closeTab(index int) {
 	id := m.tabIDFromIndex(index)
-	m.TabsWidget().RemoveTab(index)
+	m.tabsWidget.RemoveTab(index)
 	delete(m.tabGistList, id)
 }
 

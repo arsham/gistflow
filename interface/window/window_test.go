@@ -15,12 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/therecipe/qt/gui"
-	"github.com/therecipe/qt/testlib"
-
 	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/interface/gistlist"
+	"github.com/arsham/gisty/interface/searchbox"
 	"github.com/arsham/gisty/interface/tab"
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/testlib"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -147,78 +148,41 @@ func testWindowStartupWidgets(t *testing.T) {
 		)
 	}
 
-	if window.StatusArea() == nil {
-		t.Error("window.StatusArea() = nil, want *widgets.QStatusBar")
+	if window.statusArea == nil {
+		t.Error("window.statusArea = nil, want *widgets.QStatusBar")
 		return
 	}
-	if window.TabsWidget() == nil {
-		t.Error("window.TabsWidget() = nil, want *widgets.QTabWidget")
+	if window.tabsWidget == nil {
+		t.Error("window.tabsWidget = nil, want *widgets.QTabWidget")
 		return
 	}
-	if !window.TabsWidget().IsMovable() {
-		t.Error("window.TabsWidget() is not movable")
+	if !window.tabsWidget.IsMovable() {
+		t.Error("window.tabsWidget is not movable")
 	}
 	if window.tabGistList == nil {
 		t.Error("window.tabGistList = nil, want []*tabGist")
 		return
 	}
-	if window.GistList() == nil {
-		t.Error("window.GistList() = nil, want *widgets.QListView")
+	if window.gistList == nil {
+		t.Error("window.gistList = nil, want *widgets.QListView")
 		return
 	}
 	if window.dockWidget == nil {
 		t.Error("window.dockWidget = nil, want *widgets.QDockWidget")
 		return
 	}
-	if window.TabsWidget().Count() < 1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want at least 1", window.TabsWidget().Count())
-	}
-	if window.userInput == nil {
-		t.Error("window.userInput = nil, want *widgets.QDockWidget")
-		return
-	}
-
-	if !window.userInput.IsClearButtonEnabled() {
-		t.Error("userInput doesn't have a clear button")
+	if window.tabsWidget.Count() < 1 {
+		t.Errorf("window.tabsWidget.Count() = %d, want at least 1", window.tabsWidget.Count())
 	}
 
 	if window.clipboard() == nil {
 		t.Error("window.clipboard() = nil, want *gui.QClipboard")
 		return
 	}
-}
 
-func TestWindowModel(t *testing.T) { tRunner.Run(func() { testWindowModel(t) }) }
-func testWindowModel(t *testing.T) {
-	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
-	if err != nil {
-		t.Error(err)
+	if window.gistList == nil {
+		t.Error("window.gistList = nil, want *gistlist.Container")
 		return
-	}
-	defer cleanup()
-	window.setModel()
-	if window.model == nil {
-		t.Error("window.model = nil, want listGistModel")
-		return
-	}
-	model := window.model
-	if window.proxy == nil {
-		t.Error("window.proxy = nil, want *core.QSortFilterProxyModel")
-		return
-	}
-	if window.proxy.SourceModel().Pointer() != model.Pointer() {
-		t.Errorf("window.proxy.SourceModel().Pointer() = %v, want %v", window.proxy.SourceModel().Pointer(), model.Pointer())
-	}
-	if window.proxy.FilterCaseSensitivity() != core.Qt__CaseInsensitive {
-		t.Errorf("window.proxy.FilterCaseSensitivity() = %d, want %d", window.proxy.FilterCaseSensitivity(), core.Qt__CaseInsensitive)
-	}
-	if model.Pointer() != window.model.Pointer() {
-		t.Errorf("model.Pointer() = %v, want %v", model.Pointer(), window.model.Pointer())
-		return
-	}
-	if window.GistList().Model().Pointer() != window.proxy.Pointer() {
-		t.Errorf("window.GistList().Model().Pointer() = %d, want %d", window.GistList().Model().Pointer(), window.proxy.Pointer())
 	}
 }
 
@@ -233,7 +197,6 @@ func testPopulateError(t *testing.T) {
 	}
 	window.gistService.Logger = nil
 	defer cleanup()
-	window.setModel()
 
 	window.logger = &logger{
 		errorFunc: func(str string) {
@@ -247,8 +210,10 @@ func testPopulateError(t *testing.T) {
 		t.Error("window.gistService.Logger is not assigned")
 		return
 	}
-	if c := window.model.RowCount(nil); c != 0 {
-		t.Errorf("window.model.RowCount() = %d, want 0", c)
+	model := window.searchbox.Model()
+	index := core.NewQModelIndex()
+	if c := model.RowCount(index); c != 0 {
+		t.Errorf("model.RowCount() = %d, want 0", c)
 	}
 	select {
 	case <-called:
@@ -277,23 +242,22 @@ func testPopulate(t *testing.T) {
 	defer cleanup()
 	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
 
-	window.setModel()
 	window.populate()
 
-	if c := window.model.RowCount(nil); c != size {
-		t.Errorf("window.model.RowCount() = %d, want %d", c, size)
-		return
+	c := gistlist.NewContainerFromPointer(window.gistList.Pointer())
+	if c.Description(0) != gres.Description {
+		t.Errorf("c.Description(0) = %s, want %s", c.Description(0), gres.Description)
+	}
+	if c.ID(0) != gres.ID {
+		t.Errorf("c.ID(0) = %s, want %s", c.ID(0), gres.ID)
 	}
 
-	model := window.GistList().Model()
-	item := model.Index(0, 0, core.NewQModelIndex())
-	desc := item.Data(tab.Description).ToString()
-	id := item.Data(tab.GistID).ToString()
-	if desc != gres.Description {
-		t.Errorf("Display = %s, want %s", desc, gres.Description)
+	s := searchbox.NewDialogFromPointer(window.searchbox.Pointer())
+	if s.Description(0) != gres.Description {
+		t.Errorf("s.Description(0) = %s, want %s", s.Description(0), gres.Description)
 	}
-	if id != gres.ID {
-		t.Errorf("Display = %s, want %s", id, gres.ID)
+	if s.ID(0) != gres.ID {
+		t.Errorf("s.ID(0) = %s, want %s", s.ID(0), gres.ID)
 	}
 }
 
@@ -310,10 +274,10 @@ func testLoadingGeometry(t *testing.T) {
 	x, y, w, h := 400, 500, 600, 700
 	tmpObj := widgets.NewQWidget(nil, 0)
 	tmpObj.SetGeometry2(x, y, w, h)
-	window.SetSettings(getSettings(name))
+	window.settings = getSettings(name)
 	size := tmpObj.SaveGeometry()
-	window.Settings().SetValue(mainWindowGeometry, core.NewQVariant15(size))
-	window.Settings().Sync()
+	window.settings.SetValue(mainWindowGeometry, core.NewQVariant15(size))
+	window.settings.Sync()
 
 	window.loadSettings()
 	geometry := window.Geometry()
@@ -336,88 +300,6 @@ func testLoadingGeometry(t *testing.T) {
 	check("to make sure: geometry.Y()", window.Geometry().Y(), y)
 	check("to make sure: geometry.Width()", window.Geometry().Width(), w)
 	check("to make sure: geometry.Height()", window.Geometry().Height(), h)
-}
-
-func TestFilteringGists(t *testing.T) { tRunner.Run(func() { testFilteringGists(t) }) }
-func testFilteringGists(t *testing.T) {
-	name := "test"
-	res := []gist.Response{
-		gist.Response{
-			ID:          "QXhJNchXAK",
-			Description: "666666 A 6 A 6 A 66666",
-		},
-		gist.Response{
-			ID:          "mLRBtHGeAKRkfENd",
-			Description: "666666 BBB 66666",
-		},
-	}
-	_, window, cleanup, err := setup(t, name, res, 1)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer cleanup()
-
-	window.setModel()
-	window.populate()
-
-	window.userInput.SetText("AAA")
-	index := core.NewQModelIndex()
-	if l := window.proxy.RowCount(index); l != 1 {
-		t.Errorf("proxy row count = %d, want %d", l, 1)
-		return
-	}
-}
-
-func TestListViewKeys(t *testing.T) { tRunner.Run(func() { testListViewKeys(t) }) }
-func testListViewKeys(t *testing.T) {
-	name := "test"
-	res := []gist.Response{
-		gist.Response{
-			ID:          "QXhJNchXAK",
-			Description: "666666AAA66666",
-		},
-	}
-	_, window, cleanup, err := setup(t, name, res, 10)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer cleanup()
-
-	window.setModel()
-	window.populate()
-
-	app.SetActiveWindow(window)
-	window.show()
-
-	event := testlib.NewQTestEventList()
-	event.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
-	event.Simulate(window.userInput)
-
-	if window.userInput.HasFocus() {
-		t.Error("userInput still in focus")
-	}
-	if !window.GistList().HasFocus() {
-		t.Errorf("window.GistList() didn't get focused")
-		return
-	}
-
-	if i := window.GistList().CurrentIndex().Row(); i != 0 {
-		t.Errorf("window.GistList().CurrentIndex().Row() = %d, want 0", i)
-	}
-	event.Simulate(window.GistList())
-	event.Simulate(window.GistList())
-	if i := window.GistList().CurrentIndex().Row(); i != 2 {
-		t.Errorf("window.GistList().CurrentIndex().Row() = %d, want 2", i)
-	}
-
-	event = testlib.NewQTestEventList()
-	event.AddKeyPress(core.Qt__Key_Up, core.Qt__NoModifier, -1)
-	event.Simulate(window.userInput)
-	if i := window.GistList().CurrentIndex().Row(); i != 2 {
-		t.Errorf("window.GistList().CurrentIndex().Row() = %d, want 2", i)
-	}
 }
 
 func TestViewGist(t *testing.T) { tRunner.Run(func() { testViewGist(t) }) }
@@ -461,8 +343,8 @@ func testViewGist(t *testing.T) {
 	defer cleanup()
 	window.gistService.API = gistTs.URL
 
-	if window.TabsWidget().Count() != 1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want 1", window.TabsWidget().Count())
+	if window.tabsWidget.Count() != 1 {
+		t.Errorf("window.tabsWidget.Count() = %d, want 1", window.tabsWidget.Count())
 		return
 	}
 
@@ -475,13 +357,13 @@ func testViewGist(t *testing.T) {
 	}
 
 	newIndex := 2
-	if window.TabsWidget().Count() != newIndex {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), newIndex)
+	if window.tabsWidget.Count() != newIndex {
+		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), newIndex)
 		return
 	}
 
-	index := window.TabsWidget().CurrentIndex()
-	tab := tab.NewTabFromPointer(window.TabsWidget().Widget(index).Pointer())
+	index := window.tabsWidget.CurrentIndex()
+	tab := tab.NewTabFromPointer(window.tabsWidget.Widget(index).Pointer())
 	if tab.Files() == nil {
 		t.Error("tab.Files() = nil")
 		return
@@ -495,8 +377,8 @@ func testViewGist(t *testing.T) {
 	if guts.ToPlainText() != content {
 		t.Errorf("content = %s, want %s", guts.ToPlainText(), content)
 	}
-	if window.TabsWidget().TabText(index) != fileName {
-		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), fileName)
+	if window.tabsWidget.TabText(index) != fileName {
+		t.Errorf("TabText(%d) = %s, want %s", index, window.tabsWidget.TabText(index), fileName)
 	}
 }
 
@@ -531,12 +413,10 @@ func testClickViewGist(t *testing.T) {
 	}
 	defer cleanup()
 
-	window.setModel()
 	window.populate()
 	window.gistService.API = gistTs.URL
 
 	app.SetActiveWindow(window)
-	window.show()
 
 	var errCalled bool
 	window.logger = &logger{
@@ -549,18 +429,18 @@ func testClickViewGist(t *testing.T) {
 	event := testlib.NewQTestEventList()
 	event.AddKeyRelease(core.Qt__Key_Down, core.Qt__NoModifier, -1)
 	event.AddKeyRelease(core.Qt__Key_Enter, core.Qt__NoModifier, -1)
-	event.Simulate(window.GistList())
+	event.Simulate(window.gistList)
 	if !errCalled {
 		t.Error("didn't show error")
 	}
 
 	for _, key := range []core.Qt__Key{core.Qt__Key_Enter, core.Qt__Key_Return} {
 		called = false
-		window.GistList().SetFocus2()
+		window.gistList.SetFocus2()
 		event := testlib.NewQTestEventList()
 		event.AddKeyRelease(core.Qt__Key_Down, core.Qt__NoModifier, -1)
 		event.AddKeyRelease(key, core.Qt__NoModifier, -1)
-		event.Simulate(window.GistList())
+		event.Simulate(window.gistList)
 
 		if !called {
 			t.Error("didn't call for gist")
@@ -572,71 +452,6 @@ func testClickViewGist(t *testing.T) {
 
 	if !called {
 		return
-	}
-}
-
-func TestExchangingFocus(t *testing.T) { tRunner.Run(func() { testExchangingFocus(t) }) }
-func testExchangingFocus(t *testing.T) {
-	name := "test"
-	gres := gist.Response{
-		ID:          "QXhJNchXAK",
-		Description: "kfxLTwoCOkqEuPlp",
-	}
-	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer cleanup()
-
-	app.SetActiveWindow(window)
-	window.show()
-
-	tcs := []core.Qt__Key{
-		core.Qt__Key_A,
-		core.Qt__Key_Colon,
-		core.Qt__Key_Left,
-		core.Qt__Key_Right,
-		core.Qt__Key_Delete,
-	}
-	for _, tc := range tcs {
-		window.GistList().SetFocus2()
-		event := testlib.NewQTestEventList()
-		event.AddKeyRelease(tc, core.Qt__NoModifier, -1)
-		event.Simulate(window.GistList())
-
-		if window.GistList().HasFocus() {
-			t.Errorf("%x: GistList() didn't loose focus", tc)
-		}
-		if !window.userInput.HasFocus() {
-			t.Errorf("%x: userInput didn't gain focus", tc)
-		}
-	}
-
-	tcs = []core.Qt__Key{
-		core.Qt__Key_Up,
-		core.Qt__Key_Down,
-	}
-	for _, tc := range tcs {
-		window.GistList().SetFocus2()
-		event := testlib.NewQTestEventList()
-		event.AddKeyRelease(tc, core.Qt__NoModifier, -1)
-		event.Simulate(window.GistList())
-
-		if !window.GistList().HasFocus() {
-			t.Errorf("%x: GistList() lost focus", tc)
-		}
-		if window.userInput.HasFocus() {
-			t.Errorf("%x: userInput gained focus", tc)
-		}
-
-		event.Simulate(window.userInput)
-		if !window.GistList().HasFocus() {
-			t.Errorf("%x: GistList() didn't gain focus", tc)
-		}
-		if window.userInput.HasFocus() {
-			t.Errorf("%x: userInput didn't loose focus", tc)
-		}
 	}
 }
 
@@ -673,84 +488,29 @@ func testOpeningGistTwice(t *testing.T) {
 
 	window.gistService.API = gistTs.URL
 
-	startingSize := window.TabsWidget().Count()
+	startingSize := window.tabsWidget.Count()
 	window.openGist(id1)
-	if window.TabsWidget().Count() != startingSize+1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), startingSize+1)
+	if window.tabsWidget.Count() != startingSize+1 {
+		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+1)
 	}
-	if window.TabsWidget().CurrentIndex() != 1 {
-		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want 1", window.TabsWidget().CurrentIndex())
+	if window.tabsWidget.CurrentIndex() != 1 {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 1", window.tabsWidget.CurrentIndex())
 	}
 
 	window.openGist(id2)
-	if window.TabsWidget().Count() != startingSize+2 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), startingSize+2)
+	if window.tabsWidget.Count() != startingSize+2 {
+		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+2)
 	}
-	if window.TabsWidget().CurrentIndex() != 2 {
-		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want 2", window.TabsWidget().CurrentIndex())
+	if window.tabsWidget.CurrentIndex() != 2 {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 2", window.tabsWidget.CurrentIndex())
 	}
 
 	window.openGist(id1)
-	if window.TabsWidget().Count() != startingSize+2 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), startingSize+2)
+	if window.tabsWidget.Count() != startingSize+2 {
+		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+2)
 	}
-	if window.TabsWidget().CurrentIndex() != 1 {
-		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want 1", window.TabsWidget().CurrentIndex())
-	}
-}
-
-func TestWindowStartupFocus(t *testing.T) { tRunner.Run(func() { testWindowStartupFocus(t) }) }
-func testWindowStartupFocus(t *testing.T) {
-	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer cleanup()
-
-	app.SetActiveWindow(window)
-	window.show()
-
-	if !window.userInput.HasFocus() {
-		t.Errorf("focus is on %s, want %s", app.FocusWidget().ObjectName(), window.userInput.ObjectName())
-	}
-}
-
-func TestTypingOnListView(t *testing.T) { tRunner.Run(func() { testTypingOnListView(t) }) }
-func testTypingOnListView(t *testing.T) {
-	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer cleanup()
-
-	tcs := []struct {
-		prefix string
-		input  string
-		want   string
-	}{
-		{"", "a", "a"},
-		{"", ":", ":"},
-		{"", "-", "-"},
-		{"a", "a", "aa"},
-		{"a", ":", "a:"},
-		{"a", "-", "a-"},
-		{"a ", "a", "a a"},
-		{"a ", ":", "a :"},
-		{"a ", "-", "a -"},
-	}
-	for _, tc := range tcs {
-		window.userInput.SetText(tc.prefix)
-		window.GistList().SetFocus2()
-		event := testlib.NewQTestEventList()
-		event.AddKeyRelease2(tc.input, core.Qt__NoModifier, -1)
-		event.Simulate(window.GistList())
-		if window.userInput.Text() != tc.want {
-			t.Errorf("window.userInput.Text() = `%s`, want `%s`", window.userInput.Text(), tc.want)
-		}
+	if window.tabsWidget.CurrentIndex() != 1 {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 1", window.tabsWidget.CurrentIndex())
 	}
 }
 
@@ -830,14 +590,14 @@ func testCopyURL(t *testing.T) {
 	url2 := url
 
 	tab1, tab2 := window.tabGistList[id1], window.tabGistList[id2]
-	window.TabsWidget().SetCurrentWidget(tab1)
+	window.tabsWidget.SetCurrentWidget(tab1)
 
 	c.Trigger()
 	if clpText != url1 {
 		t.Errorf("clpText = `%s`, want `%s`", clpText, url1)
 	}
 
-	window.TabsWidget().SetCurrentWidget(tab2)
+	window.tabsWidget.SetCurrentWidget(tab2)
 	c.Trigger()
 	if clpText != url2 {
 		t.Errorf("clpText = `%s`, want `%s`", clpText, url2)
@@ -864,14 +624,115 @@ func testEmptyDescription(t *testing.T) {
 		return
 	}
 	defer cleanup()
-	window.setModel()
 	window.populate()
 
-	model := window.GistList().Model()
+	model := window.gistList.Model()
 	item := model.Index(0, 0, core.NewQModelIndex())
-	desc := item.Data(tab.Description).ToString()
+	desc := item.Data(int(core.Qt__DisplayRole)).ToString()
 	if desc != fileName {
 		t.Errorf("Display = %s, want %s", desc, fileName)
-		t.Errorf("Display = %d, want %s", model.RowCount(nil), item.Data(tab.GistID).ToString())
+	}
+}
+
+func TestOpenSearchBox(t *testing.T) { tRunner.Run(func() { testOpenSearchBox(t) }) }
+func testOpenSearchBox(t *testing.T) {
+	_, window, cleanup, err := setup(t, "test", nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	app.SetActiveWindow(window)
+	window.Show()
+
+	event := testlib.NewQTestEventList()
+	event.AddKeyPress(core.Qt__Key_P, core.Qt__ControlModifier, -1)
+
+	tcs := []struct {
+		name   string
+		widget widgets.QWidget_ITF
+	}{
+		{"MainWindow", window},
+		{"Tabs", window.tabsWidget},
+		{"GistList", window.gistList},
+	}
+	for _, tc := range tcs {
+		window.searchbox.Hide()
+		event.Simulate(tc.widget)
+		if !window.searchbox.IsVisible() {
+			t.Errorf("%s: SearchBox is not shown", tc.name)
+		}
+	}
+}
+
+func TestClickOpenGist(t *testing.T) { tRunner.Run(func() { testClickOpenGist(t) }) }
+func testClickOpenGist(t *testing.T) {
+	name := "test"
+	var called bool
+	gres := gist.Response{
+		ID:          "QXhJNchXAK",
+		Description: "kfxLTwoCOkqEuPlp",
+	}
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, gres.ID) {
+			t.Errorf("r.URL.Path = %s, want %s in it", r.URL.Path, gres.ID)
+			return
+		}
+		// check the URL
+		called = true
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
+	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.populate()
+	window.gistService.API = gistTs.URL
+
+	app.SetActiveWindow(window)
+	window.Show()
+
+	var errCalled bool
+	window.logger = &logger{
+		errorFunc:   func(str string) { errCalled = true },
+		warningFunc: func(str string) { errCalled = true },
+	}
+
+	for _, key := range []core.Qt__Key{core.Qt__Key_Enter, core.Qt__Key_Return} {
+		called = false
+		window.searchbox.Show()
+		event := testlib.NewQTestEventList()
+		event.AddKeyClick(core.Qt__Key_Down, core.Qt__NoModifier, -1)
+		event.Simulate(window.searchbox)
+
+		event = testlib.NewQTestEventList()
+		event.AddKeyClick(key, core.Qt__NoModifier, -1)
+		event.Simulate(window.searchbox.Results())
+
+		if !called {
+			t.Error("didn't call for gist")
+		}
+		// checking the searchbox is closed after
+		if window.searchbox.IsVisible() {
+			t.Error("searchbox wasn't closed")
+		}
+
+		delete(window.tabGistList, gres.ID)
+		os.RemoveAll(window.gistService.CacheDir)
+		os.Mkdir(window.gistService.CacheDir, 0777)
+	}
+
+	if !called {
+		return
 	}
 }

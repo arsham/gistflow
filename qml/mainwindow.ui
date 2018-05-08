@@ -93,9 +93,6 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
-      <widget class="QLineEdit" name="userInput"/>
-     </item>
-     <item>
       <widget class="QListView" name="gistList"/>
      </item>
     </layout>
