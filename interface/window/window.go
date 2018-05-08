@@ -86,11 +86,10 @@ func (m *MainWindow) Display() error {
 	}
 
 	m.show()
-	// TODO: use singleShot
 	m.setModel()
 	m.SetSettings(getSettings(m.name))
 	m.loadSettings()
-	m.populate()
+	go m.populate()
 	widgets.QApplication_Exec()
 	return nil
 }
@@ -251,7 +250,6 @@ func (m *MainWindow) populate() {
 	if m.gistService.CacheDir == "" {
 		m.gistService.CacheDir = m.cacheDir()
 	}
-	// TODO: populate in background.
 	for item := range m.gistService.Iter() {
 		foundOne = true
 		var g = tab.NewListItem(nil)

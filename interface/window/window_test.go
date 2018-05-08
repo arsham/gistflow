@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"
@@ -223,10 +224,8 @@ func testWindowModel(t *testing.T) {
 
 func TestPopulateError(t *testing.T) { tRunner.Run(func() { testPopulateError(t) }) }
 func testPopulateError(t *testing.T) {
-	var (
-		name   = "test"
-		called bool
-	)
+	name := "test"
+	called := make(chan struct{})
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
@@ -238,7 +237,7 @@ func testPopulateError(t *testing.T) {
 
 	window.logger = &logger{
 		errorFunc: func(str string) {
-			called = true
+			close(called)
 		},
 		warningFunc: func(str string) {},
 	}
@@ -251,9 +250,12 @@ func testPopulateError(t *testing.T) {
 	if c := window.model.RowCount(nil); c != 0 {
 		t.Errorf("window.model.RowCount() = %d, want 0", c)
 	}
-	if !called {
+	select {
+	case <-called:
+	case <-time.After(2 * time.Second):
 		t.Error("expected an error, didn't register the error")
 	}
+
 	if window.gistService.CacheDir == "" {
 		t.Error("window.gistService.CacheDir is empty")
 	}
