@@ -252,11 +252,18 @@ func (m *MainWindow) populate() {
 	}
 	for item := range m.gistService.Iter() {
 		foundOne = true
-		var g = tab.NewListItem(nil)
-		g.SetGistID(item.ID)
-		g.SetGistURL(item.URL)
-		g.SetDescription(item.Description)
-		m.model.AddGist(g)
+		var l = tab.NewListItem(nil)
+		l.SetGistID(item.ID)
+		l.SetGistURL(item.URL)
+		description := item.Description
+		if description == "" {
+			for n := range item.Files {
+				description = n
+				break
+			}
+		}
+		l.SetDescription(description)
+		m.model.AddGist(l)
 	}
 	if !foundOne {
 		m.logger.Error("didn't find any gists")

@@ -843,3 +843,35 @@ func testCopyURL(t *testing.T) {
 		t.Errorf("clpText = `%s`, want `%s`", clpText, url2)
 	}
 }
+
+func TestEmptyDescription(t *testing.T) { tRunner.Run(func() { testEmptyDescription(t) }) }
+func testEmptyDescription(t *testing.T) {
+	var (
+		name     = "test"
+		content  = "CNF5EmQJxiGvzwedbmTME3p0Y"
+		fileName = "84nkJJG0"
+	)
+
+	gres := gist.Response{
+		ID: "QXhJNchXAK",
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: content},
+		},
+	}
+	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	window.setModel()
+	window.populate()
+
+	model := window.GistList().Model()
+	item := model.Index(0, 0, core.NewQModelIndex())
+	desc := item.Data(tab.Description).ToString()
+	if desc != fileName {
+		t.Errorf("Display = %s, want %s", desc, fileName)
+		t.Errorf("Display = %d, want %s", model.RowCount(nil), item.Data(tab.GistID).ToString())
+	}
+}
