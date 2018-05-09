@@ -6,6 +6,7 @@
 package window
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -239,12 +240,22 @@ func (m *MainWindow) openGist(id string) error {
 		return errors.Wrapf(err, "id: %s", id)
 	}
 
-	tab := tab.NewTab(m.tabsWidget)
-	tab.ShowGist(m.tabsWidget, &rg)
-	m.tabGistList[id] = tab
-	tab.ConnectCopyToClipboard(func(text string) {
+	t := tab.NewTab(m.tabsWidget)
+	t.ShowGist(m.tabsWidget, &rg)
+	m.tabGistList[id] = t
+	t.ConnectCopyToClipboard(func(text string) {
 		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
 	})
+	t.ConnectUpdateGist(func(g *gist.Gist) {
+		err := m.gistService.Update(*g)
+		if err != nil {
+			msg := fmt.Sprintf("Could not update the gist: %s", err)
+			m.logger.Error(msg)
+			return
+		}
+		m.showNotification("Gist has been updated")
+	})
+
 	return nil
 }
 

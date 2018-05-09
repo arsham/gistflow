@@ -736,3 +736,135 @@ func testClickOpenGist(t *testing.T) {
 		return
 	}
 }
+
+func TestUpdateGistError(t *testing.T) { tRunner.Run(func() { testUpdateGistError(t) }) }
+func testUpdateGistError(t *testing.T) {
+	var (
+		name       = "test"
+		id         = "nb4X55PupEo0bmwM"
+		content    = "XzdlfdVudcyYfpm"
+		fileName   = "PichzTJDNn"
+		newContent = "kRPtHlDFJH9dqzX"
+		called     bool
+		errored    bool
+	)
+	updateTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("not found"))
+	}))
+	defer updateTS.Close()
+
+	gres := gist.Gist{
+		ID:  id,
+		URL: updateTS.URL,
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: content},
+		},
+	}
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	window.gistService.API = gistTs.URL
+	window.logger = &logger{
+		errorFunc: func(str string) {
+			errored = true
+		},
+		warningFunc: func(str string) {},
+	}
+
+	err = window.openGist(id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// current tab is newTab
+	tabWidget := window.tabGistList[id]
+	file := tabWidget.Files()[0]
+	// hijacking the url to the new place
+	tabWidget.Gist().URL = updateTS.URL
+	file.Content().SetText(newContent)
+	tabWidget.Save().Click()
+	if !called {
+		t.Error("didn't call the server")
+	}
+	if !errored {
+		t.Error("didn't show the error")
+	}
+}
+
+func TestUpdateGist(t *testing.T) { tRunner.Run(func() { testUpdateGist(t) }) }
+func testUpdateGist(t *testing.T) {
+	var (
+		name       = "test"
+		id         = "D4cFvlqRnVg"
+		content    = "uKkKeExm8yyJJZEvNFcj"
+		fileName   = "OaBdnMbHtq1Y6"
+		newContent = "77fVwXPT0lM"
+		called     bool
+	)
+	updateTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer updateTS.Close()
+
+	gres := gist.Gist{
+		ID:  id,
+		URL: updateTS.URL,
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: content},
+		},
+	}
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := json.Marshal(gres)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	window.gistService.API = gistTs.URL
+
+	err = window.openGist(id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// current tab is newTab
+	tabWidget := window.tabGistList[id]
+	file := tabWidget.Files()[0]
+	// hijacking the url to the new place
+	tabWidget.Gist().URL = updateTS.URL
+	file.Content().SetText(newContent)
+	tabWidget.Save().Click()
+	if !called {
+		t.Error("didn't call the server")
+	}
+}
+
+// Test closing dirty gists

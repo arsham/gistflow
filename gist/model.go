@@ -16,10 +16,11 @@ type Response struct {
 
 // Gist represents one gist.
 type Gist struct {
-	ID      string          `json:"id"`
-	URL     string          `json:"url"`
-	HTMLURL string          `json:"html_url"`
-	Files   map[string]File `json:"files"`
+	ID          string          `json:"id"`
+	URL         string          `json:"url"`
+	HTMLURL     string          `json:"html_url"`
+	Description string          `json:"description"`
+	Files       map[string]File `json:"files"`
 }
 
 // File is one file in a Gist.

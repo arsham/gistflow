@@ -15,10 +15,12 @@ type File struct {
 
 	_ func()       `constructor:"init"`
 	_ func(string) `signal:"copyToClipboard"`
+	_ func()       `signal:"updateGist"`
 
-	_ *widgets.QLabel      `property:"information"`
-	_ *widgets.QTextEdit   `property:"content"`
-	_ *widgets.QPushButton `property:"copy"`
+	_        *widgets.QLabel      `property:"information"`
+	_        *widgets.QTextEdit   `property:"content"`
+	_        *widgets.QPushButton `property:"copy"`
+	fileName string
 }
 
 func (f *File) init() {
@@ -30,7 +32,7 @@ func (f *File) init() {
 	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	hLayout.AddItem(hSpacer)
 	f.SetCopy(widgets.NewQPushButton(f))
-	f.Copy().SetText("Copy")
+	f.Copy().SetText("Copy Contents")
 	hLayout.AddWidget(f.Copy(), 0, 0)
 	vLayout.AddLayout(hLayout, 0)
 	f.SetContent(widgets.NewQTextEdit(f))
@@ -39,5 +41,8 @@ func (f *File) init() {
 
 	f.Copy().ConnectClicked(func(bool) {
 		f.CopyToClipboard(f.Content().ToPlainText())
+	})
+	f.Content().ConnectTextChanged(func() {
+		f.UpdateGist()
 	})
 }

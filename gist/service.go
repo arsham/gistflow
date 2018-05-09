@@ -7,6 +7,7 @@
 package gist
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -158,6 +159,30 @@ func (s *Service) Get(id string) (Gist, error) {
 	return g, nil
 }
 
+// Update returns an error if the remote API responds other than 200.
+func (s *Service) Update(g Gist) error {
+	b, err := json.Marshal(g)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s?access_token=%s", g.URL, s.Token)
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		reason, _ := ioutil.ReadAll(res.Body)
+		return fmt.Errorf("error updating gist: %s", reason)
+	}
+	return deleteCache(s.CacheDir, g.ID)
+}
+
 func fromCache(location, id string) ([]byte, error) {
 	if location == "" {
 		return nil, ErrEmptyCacheLoc
@@ -169,6 +194,15 @@ func fromCache(location, id string) ([]byte, error) {
 	}
 	defer file.Close()
 	return ioutil.ReadAll(file)
+}
+
+func deleteCache(location, id string) error {
+	if location == "" {
+		return ErrEmptyCacheLoc
+	}
+	name := path.Join(location, id)
+	os.Remove(name)
+	return nil
 }
 
 func saveCache(location, id string, contents []byte) error {
