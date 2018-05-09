@@ -35,7 +35,8 @@ HEADERS += \
 FORMS += \
         mainwindow.ui \
     gist.ui \
-    searchbox.ui
+    searchbox.ui \
+    create.ui
 
 DISTFILES += \
     ../app.ico

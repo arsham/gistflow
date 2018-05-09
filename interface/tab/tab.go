@@ -17,11 +17,14 @@ type Tab struct {
 	_ func()           `constructor:"init"`
 	_ func(string)     `signal:"copyToClipboard"`
 	_ func(*gist.Gist) `signal:"updateGist"`
+	_ func(*gist.Gist) `signal:"createGist"`
 
-	_ *widgets.QVBoxLayout `property:"vBoxLayout"`
-	_ *widgets.QPushButton `property:"save"`
-	_ []File               `property:"files"`
-	_ *gist.Gist           `property:"gist"`
+	// TODO: add dirty property
+	vBoxLayout  *widgets.QVBoxLayout
+	saveButton  *widgets.QPushButton
+	description *widgets.QLineEdit
+	files       []*File
+	gist        *gist.Gist
 }
 
 func init() {
@@ -31,14 +34,16 @@ func init() {
 func (t *Tab) init() {
 	layout := widgets.NewQVBoxLayout2(t)
 	layout.SetObjectName("Inner Layout")
-	t.SetVBoxLayout(layout)
+	t.vBoxLayout = layout
 	t.SetLayout(layout)
 
+	t.description = widgets.NewQLineEdit(t)
+	t.description.SetToolTip("Set the gist's description")
+	t.description.SetPlaceholderText("Description")
 	butttons := widgets.NewQVBoxLayout2(nil)
 	hLayout := widgets.NewQHBoxLayout()
-	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+	hLayout.AddWidget(t.description, 0, 0)
 	hLayout.AddLayout(butttons, 0)
-	hLayout.AddItem(hSpacer)
 
 	line := widgets.NewQFrame(t, core.Qt__Widget)
 	line.SetFrameShadow(widgets.QFrame__Sunken)
@@ -46,9 +51,12 @@ func (t *Tab) init() {
 
 	layout.AddItem(hLayout)
 	layout.AddWidget(line, 0, 0)
-	t.SetSave(widgets.NewQPushButton2("Save Gist", t))
-	t.Save().SetDisabled(true)
-	butttons.AddWidget(t.Save(), 0, 0)
+	t.saveButton = widgets.NewQPushButton2("Save Gist", t)
+	butttons.AddWidget(t.saveButton, 0, 0)
+	t.files = make([]*File, 0)
+	t.description.ConnectTextChanged(func(string) {
+		t.saveButton.SetEnabled(true)
+	})
 }
 
 // ShowGist shows each file in a separate container.
@@ -56,39 +64,78 @@ func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	for label, g := range g.Files {
 		f := NewFile(t, 0)
 		f.Content().SetText(g.Content)
-		f.Information().SetText(label)
-		t.VBoxLayout().AddWidget(f, 0, 0)
-		t.SetFiles(append(t.Files(), f))
+		t.vBoxLayout.AddWidget(f, 0, 0)
+		t.files = append(t.files, f)
 		f.ConnectCopyToClipboard(t.CopyToClipboard)
 		f.ConnectUpdateGist(func() {
-			t.Save().SetEnabled(true)
+			t.saveButton.SetEnabled(true)
 		})
-		f.fileName = label
+		f.SetFileName(label)
 	}
 	for label := range g.Files {
 		tabWidget.AddTab(t, label)
 		break
 	}
+	t.description.SetText(g.Description)
 	tabWidget.SetCurrentWidget(t)
-	t.SetGist(g)
-	t.Save().ConnectClicked(func(bool) {
-		g := t.Gist()
-		for _, f := range t.Files() {
-			content := g.Files[f.fileName]
+	t.gist = g
+	t.saveButton.ConnectClicked(func(bool) {
+		g := t.gist
+		g.Description = t.description.Text()
+		for _, f := range t.files {
+			content := g.Files[f.FileName()]
 			content.Content = f.Content().ToPlainText()
-			g.Files[f.fileName] = content
+			g.Files[f.FileName()] = content
 		}
 		t.UpdateGist(g)
-		t.Save().SetDisabled(true)
+		t.saveButton.SetDisabled(true)
+	})
+	t.saveButton.SetDisabled(true)
+}
+
+// NewGist opens a new tab for creating a new gist.
+func (t *Tab) NewGist(tabWidget *widgets.QTabWidget, label string) {
+	f := NewFile(t, 0)
+	t.vBoxLayout.AddWidget(f, 0, 0)
+	t.files = append(t.files, f)
+	f.ConnectCopyToClipboard(t.CopyToClipboard)
+	tabWidget.AddTab(t, label)
+	tabWidget.SetCurrentWidget(t)
+	t.saveButton.SetEnabled(true)
+	t.gist = new(gist.Gist)
+
+	t.saveButton.ConnectClicked(func(bool) {
+		g := t.gist
+		g.Description = t.description.Text()
+		g.Files = make(map[string]gist.File, len(t.files))
+		for _, f := range t.files {
+			content := g.Files[f.FileName()]
+			content.Content = f.Content().ToPlainText()
+			g.Files[f.FileName()] = content
+		}
+		t.CreateGist(g)
+		t.saveButton.SetDisabled(true)
 	})
 }
 
 // URL returns the main gist's URL.
 func (t Tab) URL() string {
-	return t.Gist().URL
+	return t.gist.URL
 }
 
 // HTMLURL returns the URL to the html page of the gist.
 func (t Tab) HTMLURL() string {
-	return t.Gist().HTMLURL
+	return t.gist.HTMLURL
 }
+
+// Files returns the *File slice.
+func (t *Tab) Files() []*File { return t.files }
+
+// Gist returns Gist.
+func (t *Tab) Gist() *gist.Gist { return t.gist }
+
+// SaveButton returns SaveButton.
+func (t *Tab) SaveButton() *widgets.QPushButton { return t.saveButton }
+
+// SetDescription sets the description
+func (t *Tab) SetDescription(text string) { t.description.SetText(text) }

@@ -25,17 +25,21 @@ func TestMenuBar(t *testing.T) { tRunner.Run(func() { testMenuBar(t) }) }
 func testMenuBar(t *testing.T) {
 	parent := widgets.NewQWidget(nil, 0)
 	m := NewMenuBar(parent)
-	if m.Options() == nil {
-		t.Error("m.Options() = nil, want *widgets.QMenu")
+	if m.options == nil {
+		t.Error("m.options = nil, want *widgets.QMenu")
 		return
 	}
-	if m.Actions().Quit == nil {
-		t.Error("m.Actions().Quit = nil, want *widgets.QAction")
+	if m.actions.Quit == nil {
+		t.Error("m.actions.Quit = nil, want *widgets.QAction")
 		return
 	}
-	actions := m.Options().Actions()
+	if m.actions.NewGist == nil {
+		t.Error("m.actions.NewGist = nil, want *widgets.QAction")
+		return
+	}
+	actions := m.options.Actions()
 	if len(actions) == 0 {
-		t.Error("len(m.Options().Actions()) = 0, want at least 1")
+		t.Error("len(m.options.actions) = 0, want at least 1")
 		return
 	}
 }
@@ -46,8 +50,9 @@ func testCtrlQ(t *testing.T) {
 	window := widgets.NewQMainWindow(nil, 0)
 	m := NewMenuBar(window)
 	window.Show()
+	defer window.Hide()
 	app.SetActiveWindow(window)
-	m.Actions().Quit.ConnectEvent(func(e *core.QEvent) bool {
+	m.actions.Quit.ConnectEvent(func(e *core.QEvent) bool {
 		called = true
 		return true
 	})
@@ -58,6 +63,29 @@ func testCtrlQ(t *testing.T) {
 
 	if !called {
 		t.Error("Ctrl+Q didn't trigger the actions.Quit")
+	}
+	return
+}
+
+func TestCtrlN(t *testing.T) { tRunner.Run(func() { testCtrlN(t) }) }
+func testCtrlN(t *testing.T) {
+	var called bool
+	window := widgets.NewQMainWindow(nil, 0)
+	m := NewMenuBar(window)
+	window.Show()
+	defer window.Hide()
+	app.SetActiveWindow(window)
+	m.actions.NewGist.ConnectEvent(func(e *core.QEvent) bool {
+		called = true
+		return true
+	})
+
+	event := testlib.NewQTestEventList()
+	event.AddKeyClick(core.Qt__Key_N, core.Qt__ControlModifier, -1)
+	event.Simulate(window)
+
+	if !called {
+		t.Error("Ctrl+N didn't trigger the actions.NewGist")
 	}
 	return
 }

@@ -48,6 +48,7 @@
     <property name="title">
      <string>Options</string>
     </property>
+    <addaction name="actionNew"/>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
@@ -135,6 +136,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionNew"/>
    <addaction name="actionInBrowser"/>
    <addaction name="actionCopyURL"/>
    <addaction name="actionSync"/>
@@ -199,6 +201,14 @@
    </property>
    <property name="toolTip">
     <string>Open Gist in browser</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>New</string>
+   </property>
+   <property name="toolTip">
+    <string>Create new gist</string>
    </property>
   </action>
  </widget>

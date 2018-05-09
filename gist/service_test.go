@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -329,5 +330,131 @@ func TestGistUpdate(t *testing.T) {
 
 	if err := s.Update(g); err != nil {
 		t.Errorf("g.Update(): err = %v, want nil", err)
+	}
+}
+
+func TestNewGistBadURLError(t *testing.T) {
+	var (
+		g     gist.Gist
+		url   string
+		state bool
+	)
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state = strings.Contains(r.URL.Path, "/gists")
+		url = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "thQrny",
+		Logger:   getLogger(),
+		API:      ts.URL,
+		CacheDir: loc,
+	}
+	g = gist.Gist{
+		ID:          "zwFaGyRUaPFSLr",
+		Description: "CPOQOZhAaTXH",
+		Files: map[string]gist.File{
+			"file1": gist.File{Content: "KcYhTNKTowyl"},
+		},
+	}
+
+	if err := s.Create(g); err != nil {
+		t.Errorf("g.Create() = %s, want nil", err)
+	}
+	if !state {
+		t.Errorf("%s should contain `gists`", url)
+	}
+}
+
+func TestNewGistError(t *testing.T) {
+	var (
+		g      gist.Gist
+		called bool
+	)
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "93N1Eb",
+		Logger:   getLogger(),
+		CacheDir: loc,
+		API:      ts.URL,
+	}
+	g = gist.Gist{
+		ID:          "amCp6p",
+		Description: "JufnaH",
+		Files: map[string]gist.File{
+			"file1": gist.File{Content: "8jx3KQcr1"},
+		},
+	}
+
+	if err := s.Create(g); err == nil {
+		t.Error("g.Create() = nil, want error")
+	}
+	if !called {
+		t.Error("server wasn't called")
+	}
+}
+
+func TestNewGist(t *testing.T) {
+	testNewGist(t, http.StatusOK)
+	testNewGist(t, http.StatusCreated)
+}
+func testNewGist(t *testing.T, code int) {
+	var g gist.Gist
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("r.Method = %s, want POST", r.Method)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.WriteHeader(code)
+		w.Write(b)
+	}))
+	defer ts.Close()
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "93N1Eb",
+		Logger:   getLogger(),
+		API:      ts.URL,
+		CacheDir: loc,
+	}
+	g = gist.Gist{
+		ID:          "amCp6p",
+		Description: "JufnaH",
+		Files: map[string]gist.File{
+			"file1": gist.File{Content: "8jx3KQcr1"},
+		},
+	}
+
+	if err := s.Create(g); err != nil {
+		t.Errorf("code(%d): g.Create() = %v, want nil", code, err)
 	}
 }

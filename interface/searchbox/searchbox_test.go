@@ -26,11 +26,11 @@ func TestMain(m *testing.M) {
 func TestDialog(t *testing.T) { tRunner.Run(func() { testDialog(t) }) }
 func testDialog(t *testing.T) {
 	g := NewDialog(nil, 0)
-	if g.Results() == nil {
-		t.Error("g.Results() = nil, want *widgets.QListView")
+	if g.results == nil {
+		t.Error("g.results = nil, want *widgets.QListView")
 	}
-	if g.Input() == nil {
-		t.Error("g.Input() = nil, want *widgets.QLineEdit")
+	if g.input == nil {
+		t.Error("g.input = nil, want *widgets.QLineEdit")
 	}
 	if g.model == nil {
 		t.Error("g.model = nil, want *ListModel")
@@ -41,8 +41,8 @@ func testDialog(t *testing.T) {
 	if g.proxy.SourceModel().Pointer() != g.model.Pointer() {
 		t.Errorf("g.proxy.SourceModel() = %v, want %v", g.proxy.SourceModel().Pointer(), g.model.Pointer())
 	}
-	if g.Results().Model().Pointer() != g.proxy.Pointer() {
-		t.Errorf("Results().Model() = %v, want %v", g.Results().Model().Pointer(), g.proxy.Pointer())
+	if g.results.Model().Pointer() != g.proxy.Pointer() {
+		t.Errorf("Results().Model() = %v, want %v", g.results.Model().Pointer(), g.proxy.Pointer())
 	}
 }
 
@@ -52,6 +52,7 @@ func testEscape(t *testing.T) {
 	m := NewDialog(nil, 0)
 	app.SetActiveWindow(m)
 	m.Show()
+	defer m.Hide()
 
 	m.ConnectKeyPressEvent(func(event *gui.QKeyEvent) {
 		// checking the test's logic here.
@@ -81,10 +82,10 @@ func testID(t *testing.T) {
 		g2    = NewListItem(nil)
 		model = NewListModel(nil)
 	)
-	d.Results().SetModel(model)
+	d.results.SetModel(model)
 
-	g1.SetGistID(id1)
-	g2.SetGistID(id2)
+	g1.GistID = id1
+	g2.GistID = id2
 
 	model.AddGist(g1)
 	model.AddGist(g2)
@@ -108,10 +109,10 @@ func testDescription(t *testing.T) {
 		g2           = NewListItem(nil)
 		model        = NewListModel(nil)
 	)
-	d.Results().SetModel(model)
+	d.results.SetModel(model)
 
-	g1.SetDescription(description1)
-	g2.SetDescription(description2)
+	g1.Description = description1
+	g2.Description = description2
 
 	model.AddGist(g1)
 	model.AddGist(g2)
@@ -135,8 +136,8 @@ func testFiltering(t *testing.T) {
 		g2           = NewListItem(nil)
 	)
 
-	g1.SetDescription(description1)
-	g2.SetDescription(description2)
+	g1.Description = description1
+	g2.Description = description2
 	d.Add(gist.Response{Description: description1})
 	d.Add(gist.Response{Description: description2})
 
@@ -145,7 +146,7 @@ func testFiltering(t *testing.T) {
 		return
 	}
 
-	d.Input().SetText("A*A*A")
+	d.input.SetText("A*A*A")
 
 	if d.Model().RowCount(core.NewQModelIndex()) != 1 {
 		t.Errorf("RowCount() = %d, want 1", d.Model().RowCount(core.NewQModelIndex()))
@@ -154,7 +155,7 @@ func testFiltering(t *testing.T) {
 		t.Errorf("d.Description(0) = %s, want %s", d.Description(0), description1)
 	}
 
-	d.Input().SetText("B*B*B")
+	d.input.SetText("B*B*B")
 
 	if d.Model().RowCount(core.NewQModelIndex()) != 1 {
 		t.Errorf("RowCount() = %d, want 1", d.Model().RowCount(core.NewQModelIndex()))
@@ -177,22 +178,22 @@ func testKeepTopMostIndexOnResults(t *testing.T) {
 		g2           = NewListItem(nil)
 	)
 
-	g1.SetDescription(description1)
-	g2.SetDescription(description2)
+	g1.Description = description1
+	g2.Description = description2
 	d.Add(gist.Response{Description: description1})
 	d.Add(gist.Response{Description: description2})
 
 	app.SetActiveWindow(d)
 	d.View(parent.Geometry())
-	if d.Results().CurrentIndex().Row() < 0 {
-		t.Errorf("CurrentIndex().Row() = %d, want >= 0", d.Results().CurrentIndex().Row())
+	if d.results.CurrentIndex().Row() < 0 {
+		t.Errorf("CurrentIndex().Row() = %d, want >= 0", d.results.CurrentIndex().Row())
 	}
 
 	tcs := []string{description1, description2, description2[2:4], ""}
 	for _, tc := range tcs {
-		d.Input().SetText(tc)
-		if d.Results().CurrentIndex().Row() < 0 {
-			t.Errorf("`%s`: CurrentIndex().Row() = %d, want >= 0", tc, d.Results().CurrentIndex().Row())
+		d.input.SetText(tc)
+		if d.results.CurrentIndex().Row() < 0 {
+			t.Errorf("`%s`: CurrentIndex().Row() = %d, want >= 0", tc, d.results.CurrentIndex().Row())
 		}
 	}
 }
@@ -213,16 +214,16 @@ func testNagigatingSearchBox(t *testing.T, name string, dir *testlib.QTestEventL
 		d           = NewDialog(parent, 0)
 		g           = NewListItem(nil)
 	)
-	g.SetDescription(description)
+	g.Description = description
 	d.Add(gist.Response{Description: description})
 
 	app.SetActiveWindow(d)
 	d.View(parent.Geometry())
 	dir.Simulate(d)
-	if d.Results().CurrentIndex().Row() != 0 {
-		t.Errorf("%s: CurrentIndex().Row() = %d, want 0", name, d.Results().CurrentIndex().Row())
+	if d.results.CurrentIndex().Row() != 0 {
+		t.Errorf("%s: CurrentIndex().Row() = %d, want 0", name, d.results.CurrentIndex().Row())
 	}
-	if !d.Results().HasFocus() {
+	if !d.results.HasFocus() {
 		t.Errorf("%s: results didn't get focused", name)
 	}
 }
@@ -236,6 +237,7 @@ func testOpenGistSlot(t *testing.T) {
 	)
 	app.SetActiveWindow(d)
 	d.Show()
+	defer d.Hide()
 	d.Add(gist.Response{ID: id})
 
 	d.ConnectOpenGist(func(text string) {
@@ -253,7 +255,7 @@ func testOpenGistSlot(t *testing.T) {
 
 		event = testlib.NewQTestEventList()
 		event.AddKeyClick(key, core.Qt__NoModifier, -1)
-		event.Simulate(d.Results())
+		event.Simulate(d.results)
 		if !called {
 			t.Error("signal wasn't received")
 		}

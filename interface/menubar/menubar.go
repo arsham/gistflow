@@ -14,13 +14,14 @@ type MenuBar struct {
 
 	_ func()     `constructor:"init"`
 	_ func()     `signal:"quit"`
+	_ func(bool) `signal:"newGist"`
 	_ func(bool) `signal:"copyURLToClipboard"`
 	_ func(bool) `signal:"openInBrowser"`
 
-	_ *widgets.QMenu `property:"options"`
-	_ *widgets.QMenu `property:"window"`
-	_ *widgets.QMenu `property:"edit"`
-	_ *Action        `property:"actions"`
+	options *widgets.QMenu
+	window  *widgets.QMenu
+	edit    *widgets.QMenu
+	actions *Action
 }
 
 func init() {
@@ -28,34 +29,49 @@ func init() {
 }
 
 func (m *MenuBar) init() {
-	m.SetActions(NewAction(m))
+	m.actions = NewAction(m)
 
-	m.SetOptions(m.AddMenu2("&Options"))
-	m.Options().SetObjectName("menuOptions")
-	m.Options().AddActions([]*widgets.QAction{
-		m.Actions().Settings,
-		m.Actions().Sync,
+	m.options = m.AddMenu2("&Options")
+	m.options.SetObjectName("menuOptions")
+	m.options.AddActions([]*widgets.QAction{
+		m.actions.NewGist,
 		m.AddSeparator(),
-		m.Actions().Quit,
+		m.actions.Settings,
+		m.actions.Sync,
+		m.AddSeparator(),
+		m.actions.Quit,
 	})
 
-	m.SetEdit(m.AddMenu2("&Edit"))
-	m.Edit().SetObjectName("edit")
-	m.Edit().AddActions([]*widgets.QAction{
-		m.Actions().InBrowser,
-		m.Actions().CopyURL,
+	m.edit = m.AddMenu2("&Edit")
+	m.edit.SetObjectName("edit")
+	m.edit.AddActions([]*widgets.QAction{
+		m.actions.InBrowser,
+		m.actions.CopyURL,
 	})
 
-	m.SetWindow(m.AddMenu2("&Window"))
-	m.Window().SetObjectName("menuWindow")
-	m.Window().AddActions([]*widgets.QAction{
-		m.Actions().Toolbar,
-		m.Actions().GistList,
+	m.window = m.AddMenu2("&Window")
+	m.window.SetObjectName("menuWindow")
+	m.window.AddActions([]*widgets.QAction{
+		m.actions.Toolbar,
+		m.actions.GistList,
 	})
 
-	m.Actions().CopyURL.ConnectTriggered(m.CopyURLToClipboard)
-	m.Actions().Quit.ConnectTriggered(func(bool) {
+	m.actions.CopyURL.ConnectTriggered(m.CopyURLToClipboard)
+	m.actions.Quit.ConnectTriggered(func(bool) {
 		m.Quit()
 	})
-	m.Actions().InBrowser.ConnectTriggered(m.OpenInBrowser)
+	m.actions.InBrowser.ConnectTriggered(m.OpenInBrowser)
+	m.actions.NewGist.ConnectTriggered(m.NewGist)
 }
+
+// Actions returns all actions assigned to this MenuBar.
+func (m *MenuBar) Actions() *Action { return m.actions }
+
+// Options returns the options.
+func (m *MenuBar) Options() *widgets.QMenu { return m.options }
+
+// Window returns the window.
+func (m *MenuBar) Window() *widgets.QMenu { return m.window }
+
+// Edit returns the edit.
+func (m *MenuBar) Edit() *widgets.QMenu { return m.edit }

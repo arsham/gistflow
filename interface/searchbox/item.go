@@ -25,9 +25,9 @@ type ListModel struct {
 type ListItem struct {
 	core.QObject
 
-	_ string `property:"GistID"`
-	_ string `property:"GistURL"`
-	_ string `property:"Description"`
+	GistID      string
+	GistURL     string
+	Description string
 }
 
 func init() {
@@ -61,13 +61,13 @@ func (m *ListModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	var p = m.Gists()[index.Row()]
 	switch role {
 	case gistID:
-		return core.NewQVariant14(p.GistID())
+		return core.NewQVariant14(p.GistID)
 
 	case gistURL:
-		return core.NewQVariant14(p.GistURL())
+		return core.NewQVariant14(p.GistURL)
 
 	case description:
-		return core.NewQVariant14(p.Description())
+		return core.NewQVariant14(p.Description)
 
 	default:
 		return core.NewQVariant()

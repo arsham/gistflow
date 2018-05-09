@@ -518,13 +518,13 @@ func testCopyContents(t *testing.T) {
 	tab := window.tabGistList[id]
 
 	f1 := tab.Files()[0]
-	f1.Copy().Click()
+	f1.CopyButton().Click()
 	if clpText != content1 {
 		t.Errorf("clpText = %s, want %s", clpText, content1)
 	}
 
 	f2 := tab.Files()[1]
-	f2.Copy().Click()
+	f2.CopyButton().Click()
 	if clpText != content2 {
 		t.Errorf("clpText = %s, want %s", clpText, content2)
 	}

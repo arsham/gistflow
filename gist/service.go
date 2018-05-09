@@ -127,7 +127,7 @@ func (s *Service) Get(id string) (Gist, error) {
 		s.Logger.Warning(err.Error())
 	}
 
-	url := fmt.Sprintf("%s?access_token=%s", gistURL, s.Token)
+	url := s.withToken(gistURL)
 	r, err := http.Get(url)
 	if err != nil {
 		return Gist{}, err
@@ -165,7 +165,7 @@ func (s *Service) Update(g Gist) error {
 	if err != nil {
 		return err
 	}
-	url := fmt.Sprintf("%s?access_token=%s", g.URL, s.Token)
+	url := s.withToken(g.URL)
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(b))
 	if err != nil {
@@ -181,6 +181,38 @@ func (s *Service) Update(g Gist) error {
 		return fmt.Errorf("error updating gist: %s", reason)
 	}
 	return deleteCache(s.CacheDir, g.ID)
+}
+
+// Create returns an error if the remote API responds other than 200.
+func (s *Service) Create(g Gist) error {
+	b, err := json.Marshal(g)
+	if err != nil {
+		return err
+	}
+	url := s.withToken(s.API + "/gists")
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case http.StatusOK, http.StatusCreated:
+	default:
+		reason, _ := ioutil.ReadAll(res.Body)
+		return fmt.Errorf("error updating gist: %s", reason)
+	}
+	return nil
+}
+
+func (s *Service) withToken(url string) string {
+	return fmt.Sprintf("%s?access_token=%s", url, s.Token)
 }
 
 func fromCache(location, id string) ([]byte, error) {

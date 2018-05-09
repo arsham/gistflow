@@ -5,6 +5,7 @@
 package window
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -240,8 +241,8 @@ func testPopulate(t *testing.T) {
 		return
 	}
 	defer cleanup()
-	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
 
+	gres.URL = fmt.Sprintf("%s/gists/%s", ts.URL, gres.ID)
 	window.populate()
 
 	c := gistlist.NewContainerFromPointer(window.gistList.Pointer())
@@ -405,6 +406,7 @@ func testClickViewGist(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
+
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
 	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
 	if err != nil {
@@ -479,6 +481,7 @@ func testOpeningGistTwice(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
+
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
@@ -520,6 +523,7 @@ func testToggle(t *testing.T) {
 	window := NewMainWindow(nil, 0)
 	window.name = name
 	defer window.Hide()
+
 	app.SetActiveWindow(window)
 	window.Show()
 
@@ -562,6 +566,7 @@ func testCopyURL(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
+
 	_, window, cleanup, err := setup(t, name, nil, 0)
 	if err != nil {
 		t.Error(err)
@@ -642,6 +647,7 @@ func testOpenSearchBox(t *testing.T) {
 		return
 	}
 	defer cleanup()
+
 	app.SetActiveWindow(window)
 	window.Show()
 
@@ -688,6 +694,7 @@ func testClickOpenGist(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
+
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
 	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
 	if err != nil {
@@ -798,7 +805,7 @@ func testUpdateGistError(t *testing.T) {
 	// hijacking the url to the new place
 	tabWidget.Gist().URL = updateTS.URL
 	file.Content().SetText(newContent)
-	tabWidget.Save().Click()
+	tabWidget.SaveButton().Click()
 	if !called {
 		t.Error("didn't call the server")
 	}
@@ -861,7 +868,125 @@ func testUpdateGist(t *testing.T) {
 	// hijacking the url to the new place
 	tabWidget.Gist().URL = updateTS.URL
 	file.Content().SetText(newContent)
-	tabWidget.Save().Click()
+	tabWidget.SaveButton().Click()
+	if !called {
+		t.Error("didn't call the server")
+	}
+}
+
+func TestNewGist(t *testing.T) { tRunner.Run(func() { testNewGist(t) }) }
+func testNewGist(t *testing.T) {
+	var name = "test"
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	app.SetActiveWindow(window)
+	window.Show()
+
+	currentLen := len(window.tabGistList)
+	window.newGist(true)
+	if len(window.tabGistList) != currentLen+1 {
+		t.Errorf("didn't open the tab: window.tabGistList = %d, want %d", len(window.tabGistList), currentLen+1)
+		return
+	}
+
+	currentLen = len(window.tabGistList)
+	event := testlib.NewQTestEventList()
+	event.AddKeyClick(core.Qt__Key_N, core.Qt__ControlModifier, -1)
+	event.Simulate(window)
+	if len(window.tabGistList) != currentLen+1 {
+		t.Errorf("didn't open the tab: window.tabGistList = %d, want %d", len(window.tabGistList), currentLen+1)
+		return
+	}
+}
+
+func TestNewGistSaveError(t *testing.T) { tRunner.Run(func() { testNewGistSaveError(t) }) }
+func testNewGistSaveError(t *testing.T) {
+	var (
+		name        = "test"
+		called      bool
+		errorCalled bool
+	)
+	newGistTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("{}"))
+	}))
+	defer newGistTS.Close()
+
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.logger = &logger{
+		errorFunc: func(str string) {
+			errorCalled = true
+		},
+		warningFunc: func(str string) {},
+	}
+	window.gistService.API = newGistTS.URL
+	window.newGist(true)
+	tabWidget := tab.NewTabFromPointer(window.tabsWidget.CurrentWidget().Pointer())
+	tabWidget.SaveButton().Click()
+	if !called {
+		t.Error("didn't call the server")
+	}
+	if !errorCalled {
+		t.Error("didn't record the error")
+	}
+}
+
+func TestNewGistSave(t *testing.T) { tRunner.Run(func() { testNewGistSave(t) }) }
+func testNewGistSave(t *testing.T) {
+	var (
+		name        = "test"
+		fileName    = "18I96IpY7p"
+		description = "apoLIQrkbXEK5LpSWt"
+		called      bool
+	)
+	newGistTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		var g gist.Gist
+		data := new(bytes.Buffer)
+		data.ReadFrom(r.Body)
+		defer r.Body.Close()
+		err := json.Unmarshal(data.Bytes(), &g)
+		if err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if g.Description != description {
+			t.Errorf("g.Description = %s, want %s", g.Description, description)
+		}
+		if _, ok := g.Files[fileName]; !ok {
+			t.Errorf("%s not found in %v", fileName, g.Files)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer newGistTS.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.gistService.API = newGistTS.URL
+	window.newGist(true)
+	tab := tab.NewTabFromPointer(window.tabsWidget.CurrentWidget().Pointer())
+	tab.SetDescription(description)
+	tab.Files()[0].SetFileName(fileName)
+
+	tab.SaveButton().Click()
 	if !called {
 		t.Error("didn't call the server")
 	}

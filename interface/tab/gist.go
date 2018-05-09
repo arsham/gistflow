@@ -5,7 +5,6 @@
 package tab
 
 import (
-	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -17,32 +16,48 @@ type File struct {
 	_ func(string) `signal:"copyToClipboard"`
 	_ func()       `signal:"updateGist"`
 
-	_        *widgets.QLabel      `property:"information"`
-	_        *widgets.QTextEdit   `property:"content"`
-	_        *widgets.QPushButton `property:"copy"`
-	fileName string
+	fileName   *widgets.QLineEdit
+	content    *widgets.QTextEdit
+	copyButton *widgets.QPushButton
 }
 
 func (f *File) init() {
 	f.SetObjectName("File")
 	vLayout := widgets.NewQVBoxLayout2(f)
 	hLayout := widgets.NewQHBoxLayout()
-	f.SetInformation(widgets.NewQLabel(f, core.Qt__Widget))
-	hLayout.AddWidget(f.Information(), 0, 0)
+	f.fileName = widgets.NewQLineEdit(f)
+	f.fileName.SetPlaceholderText("Filename")
+	hLayout.AddWidget(f.fileName, 0, 0)
 	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	hLayout.AddItem(hSpacer)
-	f.SetCopy(widgets.NewQPushButton(f))
-	f.Copy().SetText("Copy Contents")
-	hLayout.AddWidget(f.Copy(), 0, 0)
+	f.copyButton = widgets.NewQPushButton(f)
+	f.copyButton.SetText("Copy Contents")
+	hLayout.AddWidget(f.copyButton, 0, 0)
 	vLayout.AddLayout(hLayout, 0)
-	f.SetContent(widgets.NewQTextEdit(f))
-	f.Content().SetObjectName("content")
-	vLayout.AddWidget(f.Content(), 0, 0)
+	f.content = widgets.NewQTextEdit(f)
+	f.content.SetObjectName("content")
+	f.content.SetPlaceholderText("Contents")
+	vLayout.AddWidget(f.content, 0, 0)
 
-	f.Copy().ConnectClicked(func(bool) {
-		f.CopyToClipboard(f.Content().ToPlainText())
+	f.copyButton.ConnectClicked(func(bool) {
+		f.CopyToClipboard(f.content.ToPlainText())
 	})
-	f.Content().ConnectTextChanged(func() {
+	f.content.ConnectTextChanged(func() {
+		f.UpdateGist()
+	})
+	f.fileName.ConnectTextChanged(func(text string) {
 		f.UpdateGist()
 	})
 }
+
+// FileName returns the fileName.
+func (f *File) FileName() string { return f.fileName.Text() }
+
+// SetFileName returns the fileName.
+func (f *File) SetFileName(fileName string) { f.fileName.SetText(fileName) }
+
+// Content returns the content.
+func (f *File) Content() *widgets.QTextEdit { return f.content }
+
+// CopyButton returns the copyButton.
+func (f *File) CopyButton() *widgets.QPushButton { return f.copyButton }

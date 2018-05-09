@@ -172,6 +172,7 @@ func (m *MainWindow) setupUI() {
 		}
 	})
 	m.searchbox.ConnectOpenGist(m.openGistByID)
+	m.menubar.ConnectNewGist(m.newGist)
 }
 
 // GistList returns the associated gistList.
@@ -228,6 +229,26 @@ func (m *MainWindow) populate() {
 	if !foundOne {
 		m.logger.Error("didn't find any gists")
 	}
+}
+
+func (m *MainWindow) newGist(bool) {
+	id := nextUntitled(m.tabGistList)
+	t := tab.NewTab(m.tabsWidget)
+	t.NewGist(m.tabsWidget, id)
+	m.tabGistList[id] = t
+
+	t.ConnectCopyToClipboard(func(text string) {
+		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
+	})
+	t.ConnectCreateGist(func(g *gist.Gist) {
+		err := m.gistService.Create(*g)
+		if err != nil {
+			msg := fmt.Sprintf("Could not create new gist: %s", err)
+			m.logger.Error(msg)
+			return
+		}
+		m.showNotification("New gist has been created")
+	})
 }
 
 func (m *MainWindow) openGist(id string) error {
@@ -288,4 +309,18 @@ func (m *MainWindow) cacheDir() string {
 		}
 	}
 	return cacheDir
+}
+
+func nextUntitled(tabGistList map[string]*tab.Tab) string {
+	id := "untitled"
+	if _, ok := tabGistList[id]; !ok {
+		return id
+	}
+	for i := 1; i < 100000; i++ {
+		id := fmt.Sprintf("untitled-%d", i)
+		if _, ok := tabGistList[id]; !ok {
+			return id
+		}
+	}
+	return id
 }

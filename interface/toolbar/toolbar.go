@@ -13,31 +13,38 @@ import (
 type Toolbar struct {
 	widgets.QToolBar
 
-	_ func()          `constructor:"init"`
-	_ *menubar.Action `property:"action"`
+	_ func() `constructor:"init"`
+
+	action *menubar.Action
 }
 
 func init() {
 	Toolbar_QRegisterMetaType()
 }
 
-func (a *Toolbar) init() {
-	a.SetObjectName("toolBar")
+func (t *Toolbar) init() {
+	t.SetObjectName("toolBar")
 
 	sizePolicy := widgets.NewQSizePolicy2(widgets.QSizePolicy__Preferred, widgets.QSizePolicy__Preferred, widgets.QSizePolicy__DefaultType)
 	sizePolicy.SetHorizontalStretch(0)
 	sizePolicy.SetVerticalStretch(45)
-	sizePolicy.SetHeightForWidth(a.SizePolicy().HasHeightForWidth())
-	a.SetSizePolicy(sizePolicy)
-	a.SetMinimumSize2(0, 45)
-	a.SetBaseSize2(0, 45)
-	a.SetFloatable(false)
+	sizePolicy.SetHeightForWidth(t.SizePolicy().HasHeightForWidth())
+	t.SetSizePolicy(sizePolicy)
+	t.SetMinimumSize2(0, 45)
+	t.SetBaseSize2(0, 45)
+	t.SetFloatable(false)
 
-	a.ConnectSetAction(func(action *menubar.Action) {
-		a.AddActions([]*widgets.QAction{
-			action.InBrowser,
-			action.CopyURL,
-			action.Sync,
-		})
+}
+
+// Action returns the action.
+// func (t *Toolbar) Action() *menubar.Action { return t.action }
+
+// SetAction adds some of the menubar actions.
+func (t *Toolbar) SetAction(a *menubar.Action) {
+	t.AddActions([]*widgets.QAction{
+		a.NewGist,
+		a.InBrowser,
+		a.CopyURL,
+		a.Sync,
 	})
 }
