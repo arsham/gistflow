@@ -13,6 +13,7 @@ import (
 	"github.com/arsham/gisty/gist"
 	"github.com/arsham/gisty/interface/gistlist"
 	"github.com/arsham/gisty/interface/menubar"
+	"github.com/arsham/gisty/interface/messagebox"
 	"github.com/arsham/gisty/interface/searchbox"
 	"github.com/arsham/gisty/interface/tab"
 	"github.com/arsham/gisty/interface/toolbar"
@@ -39,7 +40,7 @@ type MainWindow struct {
 	name        string // namespace in setting file
 	app         *widgets.QApplication
 	settings    *core.QSettings
-	logger      boxLogger
+	logger      messagebox.Message
 	gistService gist.Service
 
 	menubar    *menubar.MenuBar
@@ -80,7 +81,7 @@ func (m *MainWindow) setupUI() {
 		m.SetObjectName("gisty")
 	}
 	if m.logger == nil {
-		m.logger = messagebox(m)
+		m.logger = messagebox.New(m)
 	}
 	if m.tabGistList == nil {
 		m.tabGistList = make(map[string]*tab.Tab, 0)
@@ -275,6 +276,17 @@ func (m *MainWindow) openGist(id string) error {
 			return
 		}
 		m.showNotification("Gist has been updated")
+	})
+
+	t.ConnectDeleteFile(func(g *gist.Gist, name string) {
+		err := m.gistService.DeleteFile(*g, name)
+		if err != nil {
+			msg := fmt.Sprintf("Could not delete file: %s", err)
+			m.logger.Error(msg)
+			return
+		}
+		m.showNotification("File was removed from your gist")
+		t.FileDeleted(name)
 	})
 
 	return nil

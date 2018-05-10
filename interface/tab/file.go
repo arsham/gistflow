@@ -5,6 +5,7 @@
 package tab
 
 import (
+	"github.com/arsham/gisty/interface/messagebox"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -15,28 +16,42 @@ type File struct {
 	_ func()       `constructor:"init"`
 	_ func(string) `signal:"copyToClipboard"`
 	_ func()       `signal:"updateGist"`
+	_ func(string) `signal:"deleteFile"`
 
-	fileName   *widgets.QLineEdit
-	content    *widgets.QTextEdit
-	copyButton *widgets.QPushButton
+	fileName     *widgets.QLineEdit
+	content      *widgets.QTextEdit
+	copyButton   *widgets.QPushButton
+	deleteButton *widgets.QPushButton
+	messageBox   messagebox.Message
 }
 
 func (f *File) init() {
 	f.SetObjectName("File")
-	vLayout := widgets.NewQVBoxLayout2(f)
-	hLayout := widgets.NewQHBoxLayout()
+
+	f.messageBox = messagebox.New(f)
 	f.fileName = widgets.NewQLineEdit(f)
 	f.fileName.SetPlaceholderText("Filename")
-	hLayout.AddWidget(f.fileName, 0, 0)
-	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
-	hLayout.AddItem(hSpacer)
+
+	f.deleteButton = widgets.NewQPushButton(f)
+	f.deleteButton.SetText("Delete")
+	f.deleteButton.SetToolTip("Deletes this file from this gist. This operations is irreversible")
+
 	f.copyButton = widgets.NewQPushButton(f)
 	f.copyButton.SetText("Copy Contents")
-	hLayout.AddWidget(f.copyButton, 0, 0)
-	vLayout.AddLayout(hLayout, 0)
+	f.copyButton.SetToolTip("Copy contents to system's clipboard")
+
 	f.content = widgets.NewQTextEdit(f)
 	f.content.SetObjectName("content")
 	f.content.SetPlaceholderText("Contents")
+
+	vLayout := widgets.NewQVBoxLayout2(f)
+	hLayout := widgets.NewQHBoxLayout()
+	hLayout.AddWidget(f.fileName, 0, 0)
+	hSpacer := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+	hLayout.AddItem(hSpacer)
+	hLayout.AddWidget(f.copyButton, 0, 0)
+	hLayout.AddWidget(f.deleteButton, 0, 0)
+	vLayout.AddLayout(hLayout, 0)
 	vLayout.AddWidget(f.content, 0, 0)
 
 	f.copyButton.ConnectClicked(func(bool) {
@@ -47,6 +62,13 @@ func (f *File) init() {
 	})
 	f.fileName.ConnectTextChanged(func(text string) {
 		f.UpdateGist()
+	})
+
+	f.deleteButton.ConnectClicked(func(bool) {
+		b := f.messageBox.Critical("Are you sure you want to delete this file?")
+		if b == widgets.QMessageBox__Ok {
+			f.DeleteFile(f.fileName.Text())
+		}
 	})
 }
 

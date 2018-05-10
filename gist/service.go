@@ -211,6 +211,35 @@ func (s *Service) Create(g Gist) error {
 	return nil
 }
 
+// DeleteFile sends a request to the server to remove a file.
+func (s *Service) DeleteFile(g Gist, name string) error {
+	url := s.withToken(g.URL)
+	g = Gist{
+		Files: map[string]File{
+			name: File{},
+		},
+	}
+	b, err := json.Marshal(g)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		reason, _ := ioutil.ReadAll(res.Body)
+		return fmt.Errorf("error updating gist: %s", reason)
+	}
+	return deleteCache(s.CacheDir, g.ID)
+}
+
 func (s *Service) withToken(url string) string {
 	return fmt.Sprintf("%s?access_token=%s", url, s.Token)
 }

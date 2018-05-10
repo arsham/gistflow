@@ -9,12 +9,16 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/therecipe/qt/core"
+
 	"github.com/arsham/gisty/gist"
 	"github.com/therecipe/qt/widgets"
 )
 
+var app *widgets.QApplication
+
 func TestMain(m *testing.M) {
-	app := widgets.NewQApplication(len(os.Args), os.Args)
+	app = widgets.NewQApplication(len(os.Args), os.Args)
 	go func() { app.Exit(m.Run()) }()
 	app.Exec()
 }
@@ -224,5 +228,66 @@ func testNewGistCheckContents(t *testing.T) {
 	tab.saveButton.Click()
 	if !called {
 		t.Error("didn't trigger the signal")
+	}
+}
+
+func TestDeleteFileRemoveWidget(t *testing.T) { tRunner.Run(func() { testDeleteFileRemoveWidget(t) }) }
+func testDeleteFileRemoveWidget(t *testing.T) {
+	var (
+		id        = "5XWadk"
+		fileName1 = "PQYuZxEl64B0"
+		fileName2 = "mBC"
+		fileName3 = "3By6gLPs0kdsYd2gC7J"
+		content   = "E7ewVidfDIXv"
+	)
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	g := &gist.Gist{
+		ID: id,
+		Files: map[string]gist.File{
+			fileName1: gist.File{Content: content},
+			fileName2: gist.File{Content: content},
+			fileName3: gist.File{Content: content},
+		},
+	}
+	tab.ShowGist(tabWidget, g)
+	if len(tab.files) != len(g.Files) {
+		t.Errorf("len(tab.files) = %d, want %d", len(tab.files), len(g.Files))
+	}
+	initialLen := len(g.Files)
+	initialVBoxLen := tab.vBoxLayout.Count()
+	tab.FileDeleted(fileName1)
+	if len(tab.files) != initialLen-1 {
+		t.Errorf("len(tab.files) = %d, want %d", len(tab.files), initialLen-1)
+	}
+	if len(tab.Gist().Files) != initialLen-1 {
+		t.Errorf("len(tab.Gist().Files) = %d, want %d", len(tab.Gist().Files), initialLen-1)
+	}
+	if tab.vBoxLayout.Count() != initialVBoxLen-1 {
+		t.Errorf("len(tab.vBoxLayout) = %d, want %d", tab.vBoxLayout.Count(), initialVBoxLen-1)
+	}
+
+	for _, file := range tab.files {
+		if file.fileName.Text() == fileName1 {
+			t.Errorf("didn't remove %s", fileName1)
+		}
+	}
+	if c := tab.FindChild(fileName1, core.Qt__FindChildrenRecursively); c.Pointer() != nil {
+		t.Errorf("didn't remove %s from layout", fileName1)
+	}
+
+	tcs := []struct {
+		name   string
+		exists bool
+	}{
+		{fileName1, false},
+		{fileName2, true},
+		{fileName3, true},
+	}
+	for _, tc := range tcs {
+		g = tab.Gist()
+		if _, ok := g.Files[tc.name]; ok != tc.exists {
+			t.Errorf("g.Files[%s]: ok = %t, want %t", tc.name, ok, tc.exists)
+		}
 	}
 }

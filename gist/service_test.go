@@ -458,3 +458,71 @@ func testNewGist(t *testing.T, code int) {
 		t.Errorf("code(%d): g.Create() = %v, want nil", code, err)
 	}
 }
+
+func TestRemoveFile(t *testing.T) {
+	var (
+		called bool
+		file1  = "file1"
+		file2  = "file2"
+	)
+	var g gist.Gist
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.Method != "PATCH" {
+			t.Errorf("r.Method = %s, want PATCH", r.Method)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		g = gist.Gist{}
+		if err := json.Unmarshal(body, &g); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := g.Files[file1]; ok {
+			t.Errorf("%s is in the request: %v", file1, g.Files)
+		}
+		if _, ok := g.Files[file2]; !ok {
+			t.Errorf("%s is not in the request: %v", file2, g.Files)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if !reflect.DeepEqual(g.Files[file2], gist.File{}) {
+			t.Errorf("g.Files[%s] = %v, want %v", file2, g.Files[file2], gist.Gist{})
+		}
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "GonCvyFGU",
+		Logger:   getLogger(),
+		CacheDir: loc,
+	}
+	g = gist.Gist{
+		ID:          "WjhdgmvZDWdjhd",
+		URL:         ts.URL,
+		Description: "IOgUKr5",
+		Files: map[string]gist.File{
+			file1: gist.File{Content: "6yZ9K645eb"},
+			file2: gist.File{Content: "t8s3FySsVmYfZH72Qt"},
+		},
+	}
+
+	if err := s.DeleteFile(g, file2); err != nil {
+		t.Errorf("g.DeleteFile(): err = %v, want nil", err)
+	}
+
+	if !called {
+		t.Error("endpoint wasn't called")
+	}
+}

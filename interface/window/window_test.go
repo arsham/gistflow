@@ -35,13 +35,15 @@ func TestMain(m *testing.M) {
 }
 
 type logger struct {
-	errorFunc   func(string)
-	warningFunc func(string)
+	criticalFunc func(string) widgets.QMessageBox__StandardButton
+	errorFunc    func(string)
+	warningFunc  func(string)
 }
 
-func (l logger) Error(msg string)                         { l.errorFunc(msg) }
-func (l logger) Warning(msg string)                       { l.warningFunc(msg) }
-func (l logger) Warningf(format string, a ...interface{}) { l.Warning(fmt.Sprintf(format, a...)) }
+func (l logger) Critical(msg string) widgets.QMessageBox__StandardButton { return l.criticalFunc(msg) }
+func (l logger) Error(msg string)                                        { l.errorFunc(msg) }
+func (l logger) Warning(msg string)                                      { l.warningFunc(msg) }
+func (l logger) Warningf(format string, a ...interface{})                { l.Warning(fmt.Sprintf(format, a...)) }
 
 type fakeClipboard struct {
 	textFunc func(string, gui.QClipboard__Mode)

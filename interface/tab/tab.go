@@ -14,10 +14,12 @@ import (
 type Tab struct {
 	widgets.QTabWidget
 
-	_ func()           `constructor:"init"`
-	_ func(string)     `signal:"copyToClipboard"`
-	_ func(*gist.Gist) `signal:"updateGist"`
-	_ func(*gist.Gist) `signal:"createGist"`
+	_ func()                   `constructor:"init"`
+	_ func(string)             `signal:"copyToClipboard"`
+	_ func(*gist.Gist, string) `signal:"deleteFile"`
+	_ func(string)             `slot:"fileDeleted"`
+	_ func(*gist.Gist)         `signal:"updateGist"`
+	_ func(*gist.Gist)         `signal:"createGist"`
 
 	// TODO: add dirty property
 	vBoxLayout  *widgets.QVBoxLayout
@@ -57,16 +59,21 @@ func (t *Tab) init() {
 	t.description.ConnectTextChanged(func(string) {
 		t.saveButton.SetEnabled(true)
 	})
+	t.ConnectFileDeleted(t.removeFile)
 }
 
 // ShowGist shows each file in a separate container.
 func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
-	for label, g := range g.Files {
+	for label, gf := range g.Files {
 		f := NewFile(t, 0)
-		f.Content().SetText(g.Content)
+		f.SetObjectName(label)
+		f.Content().SetText(gf.Content)
 		t.vBoxLayout.AddWidget(f, 0, 0)
 		t.files = append(t.files, f)
 		f.ConnectCopyToClipboard(t.CopyToClipboard)
+		f.ConnectDeleteFile(func(name string) {
+			t.DeleteFile(g, name)
+		})
 		f.ConnectUpdateGist(func() {
 			t.saveButton.SetEnabled(true)
 		})
@@ -146,3 +153,18 @@ func (t *Tab) SaveButton() *widgets.QPushButton { return t.saveButton }
 
 // SetDescription sets the description
 func (t *Tab) SetDescription(text string) { t.description.SetText(text) }
+
+// removeFile removes the file section that corresponds to name from the layout.
+func (t *Tab) removeFile(name string) {
+	for i, f := range t.files {
+		if f.fileName.Text() == name {
+			t.files = append(t.files[:i], t.files[i+1:]...)
+			break
+		}
+	}
+	c := t.FindChild(name, core.Qt__FindChildrenRecursively).Pointer()
+	f := NewFileFromPointer(c)
+	f.DestroyQWidget()
+
+	delete(t.gist.Files, name)
+}

@@ -6,6 +6,7 @@ package window
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -527,5 +528,88 @@ func testCopyContents(t *testing.T) {
 	f2.CopyButton().Click()
 	if clpText != content2 {
 		t.Errorf("clpText = %s, want %s", clpText, content2)
+	}
+}
+
+func TestDeleteFile(t *testing.T) { tRunner.Run(func() { testDeleteFile(t) }) }
+func testDeleteFile(t *testing.T) {
+	var (
+		name     = "test"
+		content1 = "WiVxf9eFeqQtdAm12wl"
+		content2 = "FRPdPlkV"
+		file1    = "Vea1UGy61WK4rEL"
+		file2    = "lr0sO9Ep"
+		called   bool
+		signaled bool
+		id       = "vLr0dPOjaqRsTR"
+		g        = &gist.Gist{
+			ID: id,
+			Files: map[string]gist.File{
+				file1: gist.File{Content: content1},
+				file2: gist.File{Content: content2},
+			},
+		}
+	)
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	updateGistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		g := gist.Gist{}
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer r.Body.Close()
+		if err := json.Unmarshal(data, &g); err != nil {
+			t.Error(err)
+			return
+		}
+		if _, ok := g.Files[file1]; !ok {
+			t.Errorf("%s was not in the request: %v", file1, g.Files)
+		}
+		if _, ok := g.Files[file2]; ok {
+			t.Errorf("%s was in the request: %v", file2, g.Files)
+		}
+		w.Write([]byte("{}"))
+	}))
+	defer updateGistTs.Close()
+
+	window.gistService.API = gistTs.URL
+	window.openGist(id)
+	if !called {
+		t.Error("didn't send the remove request")
+	}
+	tab := window.tabGistList[id]
+	tab.ConnectFileDeleted(func(name string) {
+		signaled = true
+		if name != file1 {
+			t.Errorf("name = %s, want %s", name, file1)
+		}
+	})
+	g.URL = updateGistTs.URL
+
+	called = false
+	tab.DeleteFile(g, file1)
+	if !called {
+		t.Error("didn't send the remove request")
+	}
+	if !signaled {
+		t.Error("didn't send the deleted signal")
 	}
 }
