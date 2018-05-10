@@ -6,6 +6,7 @@ package tab
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/arsham/gisty/gist"
@@ -145,7 +146,12 @@ func testSaveCheckContents(t *testing.T) {
 			t.Errorf("%s not found in files: %v", fileName2, g.Files)
 		}
 		if _, ok := g.Files[fileName1]; !ok {
-			t.Errorf("%s is still in files: %v", fileName1, g.Files)
+			t.Errorf("%s is removed from files: %v", fileName1, g.Files)
+			return
+		}
+		empty := gist.File{}
+		if !reflect.DeepEqual(g.Files[fileName1], empty) {
+			t.Errorf("g.Files[%s] = %s, want gist.File{}", fileName1, g.Files[fileName1])
 		}
 		if g.Files[fileName2].Content != content2 {
 			t.Errorf("New Content = %s, want %s", g.Files[fileName2].Content, content2)

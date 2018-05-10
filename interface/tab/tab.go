@@ -82,10 +82,17 @@ func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	t.saveButton.ConnectClicked(func(bool) {
 		g := t.gist
 		g.Description = t.description.Text()
+		names := make(map[string]struct{}, len(t.files))
 		for _, f := range t.files {
 			content := g.Files[f.FileName()]
 			content.Content = f.Content().ToPlainText()
 			g.Files[f.FileName()] = content
+			names[f.FileName()] = struct{}{}
+		}
+		for name := range g.Files {
+			if _, ok := names[name]; !ok {
+				g.Files[name] = gist.File{}
+			}
 		}
 		t.UpdateGist(g)
 		t.saveButton.SetDisabled(true)
