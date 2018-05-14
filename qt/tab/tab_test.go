@@ -59,6 +59,9 @@ func testTab(t *testing.T) {
 	if tab.publicCheckBox == nil {
 		t.Error("tab.publicCheckBox cannot be nil")
 	}
+	if tab.addFileButton == nil {
+		t.Error("tab.addFileButton cannot be nil")
+	}
 }
 
 func TestTabSetGistContents(t *testing.T) { tRunner.Run(func() { testTabSetGistContents(t) }) }
@@ -271,6 +274,50 @@ func testNewGistCheckContents(t *testing.T) {
 	}
 }
 
+// test when we add a new file, it should just remove it, otherwise it should
+// ask for permission.
+func TestDeleteFileSignals(t *testing.T) { tRunner.Run(func() { testDeleteFileSignals(t) }) }
+func testDeleteFileSignals(t *testing.T) {
+	var (
+		called   bool
+		id       = "bciIJQRWq"
+		fileName = "1qW6y7O"
+		content  = "E4cMSsK75KN5G"
+	)
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	g := &gist.Gist{
+		ID: id,
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: content},
+		},
+	}
+	tab.ShowGist(tabWidget, g)
+
+	file1 := tab.files[0]
+	file1.messageBox = logger{
+		criticalFunc: func(string) widgets.QMessageBox__StandardButton {
+			called = true
+			return widgets.QMessageBox__Ok
+		},
+	}
+
+	tab.addFileButton.Click()
+	file2 := tab.files[1]
+	file2.messageBox = logger{
+		criticalFunc: func(string) widgets.QMessageBox__StandardButton {
+			t.Error("messagebox was shown")
+			return widgets.QMessageBox__Ok
+		},
+	}
+
+	file1.deleteButton.Click()
+	if !called {
+		t.Error("messagebox was not shown")
+	}
+	file2.deleteButton.Click()
+}
+
 func TestDeleteFileRemoveWidget(t *testing.T) { tRunner.Run(func() { testDeleteFileRemoveWidget(t) }) }
 func testDeleteFileRemoveWidget(t *testing.T) {
 	var (
@@ -411,5 +458,39 @@ func testOpenGistPublicCheckBox(t *testing.T) {
 	// disabled for opening existing gists.
 	if tab.publicCheckBox.IsEnabled() {
 		t.Error("tab.publicCheckBox is not disabled")
+	}
+}
+
+func TestAddFile(t *testing.T) { tRunner.Run(func() { testAddFile(t) }) }
+func testAddFile(t *testing.T) {
+	var (
+		description = "CyX221C3RpptC"
+	)
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	g := &gist.Gist{
+		Description: description,
+	}
+	tab.ShowGist(tabWidget, g)
+	if tab.publicCheckBox.IsChecked() {
+		t.Error("Gist is not public, but the checkbox is checked")
+	}
+
+	filesCount := len(tab.files)
+	widgetsCount := tab.vBoxLayout.Count()
+	tab.addFile()
+	if len(tab.files) != filesCount+1 {
+		t.Errorf("len(tab.files) = %d, want %d", len(tab.files), filesCount+1)
+	}
+	if tab.vBoxLayout.Count() != widgetsCount+1 {
+		t.Errorf("tab.vBoxLayout.Count() = %d, want %d", tab.vBoxLayout.Count(), widgetsCount+1)
+	}
+
+	tab.addFileButton.Click()
+	if len(tab.files) != filesCount+2 {
+		t.Errorf("len(tab.files) = %d, want %d", len(tab.files), filesCount+2)
+	}
+	if tab.vBoxLayout.Count() != widgetsCount+2 {
+		t.Errorf("tab.vBoxLayout.Count() = %d, want %d", tab.vBoxLayout.Count(), widgetsCount+2)
 	}
 }

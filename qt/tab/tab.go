@@ -24,14 +24,16 @@ type Tab struct {
 	_ func(*gist.Gist)         `signal:"deleteGist"`
 
 	// TODO: add dirty property
-	messageBox     messagebox.Message
+	messageBox messagebox.Message
+	files      []*File
+	gist       *gist.Gist
+
+	description    *widgets.QLineEdit
 	vBoxLayout     *widgets.QVBoxLayout // layout on gist level operations.
 	saveButton     *widgets.QPushButton
 	publicCheckBox *widgets.QCheckBox
 	deleteButton   *widgets.QPushButton
-	description    *widgets.QLineEdit
-	files          []*File
-	gist           *gist.Gist
+	addFileButton  *widgets.QPushButton
 }
 
 func init() {
@@ -50,6 +52,7 @@ func (t *Tab) init() {
 	t.deleteButton = widgets.NewQPushButton2("Delete", t)
 	t.deleteButton.SetToolTip("Deletes the gist on github. This action is irreversible.")
 	t.publicCheckBox = widgets.NewQCheckBox2("Public", t)
+	t.addFileButton = widgets.NewQPushButton2("Add File", t)
 
 	t.description = widgets.NewQLineEdit(t)
 	t.description.SetToolTip("Set the gist's description")
@@ -67,6 +70,7 @@ func (t *Tab) init() {
 	layout.AddItem(hLayout)
 	layout.AddWidget(line, 0, 0)
 	butttons.AddWidget(t.deleteButton, 0, 0)
+	butttons.AddWidget(t.addFileButton, 0, 0)
 	butttons.AddWidget(t.saveButton, 0, 0)
 	t.files = make([]*File, 0)
 	t.description.ConnectTextChanged(func(string) {
@@ -79,22 +83,24 @@ func (t *Tab) init() {
 			t.DeleteGist(t.gist)
 		}
 	})
+	t.addFileButton.ConnectClicked(func(bool) {
+		f := t.addFile()
+		// disabling the dialog.
+		f.deleteButton.DisconnectClicked()
+		f.deleteButton.ConnectClicked(func(bool) {
+			f.DestroyQWidget()
+		})
+	})
 }
 
 // ShowGist shows each file in a separate container.
 func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 	for label, gf := range g.Files {
-		f := NewFile(t, 0)
+		f := t.addFile()
 		f.SetObjectName(label)
 		f.Content().SetText(gf.Content)
-		t.vBoxLayout.AddWidget(f, 0, 0)
-		t.files = append(t.files, f)
-		f.ConnectCopyToClipboard(t.CopyToClipboard)
 		f.ConnectDeleteFile(func(name string) {
 			t.DeleteFile(g, name)
-		})
-		f.ConnectUpdateGist(func() {
-			t.saveButton.SetEnabled(true)
 		})
 		f.SetFileName(label)
 	}
@@ -133,10 +139,7 @@ func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 
 // NewGist opens a new tab for creating a new gist.
 func (t *Tab) NewGist(tabWidget *widgets.QTabWidget, label string) {
-	f := NewFile(t, 0)
-	t.vBoxLayout.AddWidget(f, 0, 0)
-	t.files = append(t.files, f)
-	f.ConnectCopyToClipboard(t.CopyToClipboard)
+	t.addFile()
 	tabWidget.AddTab(t, label)
 	tabWidget.SetCurrentWidget(t)
 	t.saveButton.SetEnabled(true)
@@ -182,6 +185,8 @@ func (t *Tab) SetDescription(text string) { t.description.SetText(text) }
 
 // removeFile removes the file section that corresponds to name from the layout.
 func (t *Tab) removeFile(name string) {
+	// TODO: Protect this logic. If the name is not enlisted, it should show a
+	// message.
 	for i, f := range t.files {
 		if f.fileName.Text() == name {
 			t.files = append(t.files[:i], t.files[i+1:]...)
@@ -193,4 +198,15 @@ func (t *Tab) removeFile(name string) {
 	f.DestroyQWidget()
 
 	delete(t.gist.Files, name)
+}
+
+func (t *Tab) addFile() *File {
+	f := NewFile(t, 0)
+	t.vBoxLayout.AddWidget(f, 0, 0)
+	t.files = append(t.files, f)
+	f.ConnectCopyToClipboard(t.CopyToClipboard)
+	f.ConnectUpdateGist(func() {
+		t.saveButton.SetEnabled(true)
+	})
+	return f
 }
