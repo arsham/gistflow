@@ -5,6 +5,7 @@
 package gist
 
 // Response is the response coming back from gist API.
+// TODO: merge this with Gist.
 type Response struct {
 	ID          string          `json:"id"`
 	URL         string          `json:"html_url"`

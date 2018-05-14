@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/arsham/gisty/gist"
@@ -593,7 +594,7 @@ func testDeleteFile(t *testing.T) {
 	window.gistService.API = gistTs.URL
 	window.openGist(id)
 	if !called {
-		t.Error("didn't send the remove request")
+		t.Error("didn't send the open request")
 	}
 	tab := window.tabGistList[id]
 	tab.ConnectFileDeleted(func(name string) {
@@ -611,5 +612,100 @@ func testDeleteFile(t *testing.T) {
 	}
 	if !signaled {
 		t.Error("didn't send the deleted signal")
+	}
+}
+
+func TestDeleteGist(t *testing.T) { tRunner.Run(func() { testDeleteGist(t) }) }
+func testDeleteGist(t *testing.T) {
+	var (
+		name      = "test"
+		id        = "sRtW06Rs8u"
+		content   = "cF9KLDx46o"
+		file      = "QEcsU5y7"
+		called    bool
+		destroyed bool
+		g         = &gist.Gist{
+			ID: id,
+			Files: map[string]gist.File{
+				file: gist.File{Content: content},
+			},
+		}
+		r = gist.Response{
+			ID: id,
+			Files: map[string]gist.File{
+				file: gist.File{Content: content},
+			},
+		}
+	)
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Write(b)
+	}))
+	defer gistTs.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	deleteGistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		req := strings.Split(r.URL.Path, "/")
+		reqID := req[len(req)-1]
+		if reqID != id {
+			t.Errorf("reqID = %s, want %s", reqID, id)
+		}
+		w.WriteHeader(http.StatusNoContent)
+		w.Write([]byte("{}"))
+	}))
+	defer deleteGistTs.Close()
+
+	window.gistService.API = gistTs.URL
+	window.openGist(id)
+	if !called {
+		t.Error("didn't send the open request")
+	}
+	tab := window.tabGistList[id]
+	window.gistService.API = deleteGistTs.URL
+	window.searchbox.Add(r)
+	window.gistList.Add(r)
+
+	if !window.gistList.HasID(id) {
+		t.Errorf("%s is not in gistList", file)
+	}
+	if !window.searchbox.HasID(g.ID) {
+		t.Errorf("%s is not in searchbox", g.ID)
+	}
+
+	called = false
+	tab.ConnectDestroyed(func(*core.QObject) {
+		destroyed = true
+	})
+
+	tab.DeleteGist(g)
+	if !called {
+		t.Error("didn't send the remove request")
+	}
+	if window.gistList.HasID(id) {
+		t.Errorf("%s is still in gistList", file)
+	}
+	if window.gistList.Count() > 0 {
+		t.Errorf("%s is still in gistList", file)
+	}
+	if window.searchbox.HasID(g.ID) {
+		t.Errorf("%s is still in searchbox", g.ID)
+	}
+
+	if _, ok := window.tabGistList[id]; ok {
+		t.Errorf("window.tabGistList still contains %s", id)
+	}
+	if !destroyed {
+		t.Error("Tab is not removed")
 	}
 }

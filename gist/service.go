@@ -90,7 +90,7 @@ func (s *Service) Iter() chan Response {
 	ch := make(chan Response)
 	go func() {
 		perPage := 40
-		for page := 0; ; page++ {
+		for page := 1; ; page++ {
 			gs, err := s.List(perPage, page)
 			if err != nil || len(gs) == 0 {
 				break
@@ -238,6 +238,26 @@ func (s *Service) DeleteFile(g Gist, name string) error {
 		return fmt.Errorf("error updating gist: %s", reason)
 	}
 	return deleteCache(s.CacheDir, g.ID)
+}
+
+// DeleteGist sends a request to the server to remove a gist.
+func (s *Service) DeleteGist(id string) error {
+	gistURL := fmt.Sprintf("%s/gists/%s", s.api(), id)
+	url := s.withToken(gistURL)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("error removing gist: %d", res.StatusCode)
+	}
+	return deleteCache(s.CacheDir, id)
 }
 
 func (s *Service) withToken(url string) string {

@@ -91,3 +91,15 @@ func (m *ListModel) addGist(p *ListItem) {
 	m.SetGists(append(m.Gists(), p))
 	m.EndInsertRows()
 }
+
+// Remove removes the gist identified by gistID from the list.
+func (m *ListModel) Remove(gistID string) {
+	for row, p := range m.Gists() {
+		if p.GistID == gistID {
+			m.BeginRemoveRows(core.NewQModelIndex(), row, row)
+			m.SetGists(append(m.Gists()[:row], m.Gists()[row+1:]...))
+			m.EndRemoveRows()
+			return
+		}
+	}
+}

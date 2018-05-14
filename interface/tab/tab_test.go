@@ -5,6 +5,7 @@
 package tab
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -14,6 +15,17 @@ import (
 	"github.com/arsham/gisty/gist"
 	"github.com/therecipe/qt/widgets"
 )
+
+type logger struct {
+	errorFunc    func(string)
+	criticalFunc func(string) widgets.QMessageBox__StandardButton
+	warningFunc  func(string)
+}
+
+func (l logger) Error(msg string)                                        { l.errorFunc(msg) }
+func (l logger) Critical(msg string) widgets.QMessageBox__StandardButton { return l.criticalFunc(msg) }
+func (l logger) Warning(msg string)                                      { l.warningFunc(msg) }
+func (l logger) Warningf(format string, a ...interface{})                { l.Warning(fmt.Sprintf(format, a...)) }
 
 var app *widgets.QApplication
 
@@ -29,6 +41,9 @@ func testTab(t *testing.T) {
 	if tab.saveButton == nil {
 		t.Error("tab.saveButton cannot be nil")
 	}
+	if tab.deleteButton == nil {
+		t.Error("tab.deleteButton cannot be nil")
+	}
 	if tab.files == nil {
 		t.Error("tab.files cannot be nil")
 	}
@@ -37,6 +52,9 @@ func testTab(t *testing.T) {
 	}
 	if tab.description == nil {
 		t.Error("tab.description cannot be nil")
+	}
+	if tab.messageBox == nil {
+		t.Error("tab.messageBox cannot be nil")
 	}
 }
 
@@ -289,5 +307,57 @@ func testDeleteFileRemoveWidget(t *testing.T) {
 		if _, ok := g.Files[tc.name]; ok != tc.exists {
 			t.Errorf("g.Files[%s]: ok = %t, want %t", tc.name, ok, tc.exists)
 		}
+	}
+}
+
+func TestDeleteGistConfirmation(t *testing.T) { tRunner.Run(func() { testDeleteGistConfirmation(t) }) }
+func testDeleteGistConfirmation(t *testing.T) {
+	var (
+		called       bool
+		deleteCalled bool
+		fileName     = "diO962wnDCMheXu"
+		content      = "FxJKKgUP6T7b"
+		button       widgets.QMessageBox__StandardButton
+	)
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	tab.messageBox = logger{
+		criticalFunc: func(string) widgets.QMessageBox__StandardButton {
+			called = true
+			return button
+		},
+	}
+
+	g := &gist.Gist{
+		ID: "6XAQyCfcefvA",
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: content},
+		},
+	}
+	tab.ConnectDeleteGist(func(gs *gist.Gist) {
+		deleteCalled = true
+		if gs != g {
+			t.Errorf("gs = %s, want %s", gs, g)
+		}
+	})
+	tab.ShowGist(tabWidget, g)
+
+	button = widgets.QMessageBox__Cancel
+	tab.deleteButton.Click()
+	if !called {
+		t.Error("didn't trigger the signal")
+	}
+	if deleteCalled {
+		t.Error("didn't expect to send deletion signal")
+	}
+
+	button = widgets.QMessageBox__Ok
+	called = false
+	tab.deleteButton.Click()
+	if !called {
+		t.Error("didn't trigger the signal")
+	}
+	if !deleteCalled {
+		t.Error("didn't send deletion signal")
 	}
 }

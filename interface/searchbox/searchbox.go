@@ -125,3 +125,19 @@ func (d *Dialog) handleArrowKeys(event *gui.QKeyEvent) {
 
 // Results returns the result list view.
 func (d *Dialog) Results() *widgets.QListView { return d.results }
+
+// HasID returns true if the gistID was found in the model
+func (d *Dialog) HasID(gistID string) bool {
+	for _, p := range d.model.Gists() {
+		if p.GistID == gistID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Remove removes the gist identified by gistID from the model.
+func (d *Dialog) Remove(gistID string) {
+	d.model.Remove(gistID)
+}

@@ -153,3 +153,49 @@ func testEmptyDescription(t *testing.T) {
 		t.Errorf("c.Description(:0) = %s, want %s", c.Description(0), fileName)
 	}
 }
+
+func TestRemoveItem(t *testing.T) { tRunner.Run(func() { testRemoveItem(t) }) }
+func testRemoveItem(t *testing.T) {
+	var (
+		id1 = "QJn1eTU5bHOzUPc"
+		id2 = "not found"
+		id3 = "086vmZLyedK"
+		c   = NewContainer(widgets.NewQWidget(nil, 0))
+	)
+	c.Add(gist.Response{ID: id1})
+	c.Add(gist.Response{ID: id3})
+
+	currentLen := len(c.items)
+	if len(c.items) != currentLen {
+		t.Errorf("len(c.items) = %d, want %d", len(c.items), currentLen)
+		return
+	}
+
+	item := c.items[id1]
+	c.Remove(id1)
+	if len(c.items) != currentLen-1 {
+		t.Errorf("len(c.items) = %d, want %d", len(c.items), currentLen-1)
+		return
+	}
+	row := c.IndexFromItem(item).Row()
+	if row != -1 {
+		t.Errorf("row  %d, want -1", row)
+	}
+
+	c.Remove(id2)
+	if len(c.items) != currentLen-1 {
+		t.Errorf("len(c.items) = %d, want %d", len(c.items), currentLen-1)
+		return
+	}
+
+	item = c.items[id3]
+	c.Remove(id3)
+	if len(c.items) != currentLen-2 {
+		t.Errorf("len(c.items) = %d, want %d", len(c.items), currentLen-2)
+		return
+	}
+	row = c.IndexFromItem(item).Row()
+	if row != -1 {
+		t.Errorf("row  %d, want -1", row)
+	}
+}

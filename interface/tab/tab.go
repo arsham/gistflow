@@ -6,6 +6,7 @@ package tab
 
 import (
 	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/interface/messagebox"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
@@ -20,13 +21,16 @@ type Tab struct {
 	_ func(string)             `slot:"fileDeleted"`
 	_ func(*gist.Gist)         `signal:"updateGist"`
 	_ func(*gist.Gist)         `signal:"createGist"`
+	_ func(*gist.Gist)         `signal:"deleteGist"`
 
 	// TODO: add dirty property
-	vBoxLayout  *widgets.QVBoxLayout
-	saveButton  *widgets.QPushButton
-	description *widgets.QLineEdit
-	files       []*File
-	gist        *gist.Gist
+	messageBox   messagebox.Message
+	vBoxLayout   *widgets.QVBoxLayout
+	saveButton   *widgets.QPushButton
+	deleteButton *widgets.QPushButton
+	description  *widgets.QLineEdit
+	files        []*File
+	gist         *gist.Gist
 }
 
 func init() {
@@ -38,11 +42,17 @@ func (t *Tab) init() {
 	layout.SetObjectName("Inner Layout")
 	t.vBoxLayout = layout
 	t.SetLayout(layout)
+	t.messageBox = messagebox.New(t)
+
+	t.saveButton = widgets.NewQPushButton2("Save Gist", t)
+	t.saveButton.SetToolTip("Saves the gist on github")
+	t.deleteButton = widgets.NewQPushButton2("Delete", t)
+	t.deleteButton.SetToolTip("Deletes the gist on github. This action is irreversible.")
 
 	t.description = widgets.NewQLineEdit(t)
 	t.description.SetToolTip("Set the gist's description")
 	t.description.SetPlaceholderText("Description")
-	butttons := widgets.NewQVBoxLayout2(nil)
+	butttons := widgets.NewQHBoxLayout()
 	hLayout := widgets.NewQHBoxLayout()
 	hLayout.AddWidget(t.description, 0, 0)
 	hLayout.AddLayout(butttons, 0)
@@ -53,13 +63,19 @@ func (t *Tab) init() {
 
 	layout.AddItem(hLayout)
 	layout.AddWidget(line, 0, 0)
-	t.saveButton = widgets.NewQPushButton2("Save Gist", t)
+	butttons.AddWidget(t.deleteButton, 0, 0)
 	butttons.AddWidget(t.saveButton, 0, 0)
 	t.files = make([]*File, 0)
 	t.description.ConnectTextChanged(func(string) {
 		t.saveButton.SetEnabled(true)
 	})
 	t.ConnectFileDeleted(t.removeFile)
+	t.deleteButton.ConnectClicked(func(bool) {
+		b := t.messageBox.Critical("Are you sure you want to delete this gist?")
+		if b == widgets.QMessageBox__Ok {
+			t.DeleteGist(t.gist)
+		}
+	})
 }
 
 // ShowGist shows each file in a separate container.

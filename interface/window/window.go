@@ -289,6 +289,21 @@ func (m *MainWindow) openGist(id string) error {
 		t.FileDeleted(name)
 	})
 
+	t.ConnectDeleteGist(func(g *gist.Gist) {
+		err := m.gistService.DeleteGist(g.ID)
+		if err != nil {
+			msg := fmt.Sprintf("Could not delete gist: %s", err)
+			m.logger.Error(msg)
+			return
+		}
+		m.searchbox.Remove(g.ID)
+		m.gistList.Remove(g.ID)
+		tab := m.tabGistList[g.ID]
+		delete(m.tabGistList, g.ID)
+		m.showNotification("Gist has been removed")
+		tab.DestroyQWidget()
+	})
+
 	return nil
 }
 

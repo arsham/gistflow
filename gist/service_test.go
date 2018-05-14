@@ -526,3 +526,54 @@ func TestRemoveFile(t *testing.T) {
 		t.Error("endpoint wasn't called")
 	}
 }
+
+func TestDeleteGist(t *testing.T) {
+	var (
+		called bool
+		id     = "KN3ixjMQazpitCVP82"
+	)
+	var g gist.Gist
+	loc, err := ioutil.TempDir("", "gisty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(loc)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.Method != "DELETE" {
+			t.Errorf("r.Method = %s, want DELETE", r.Method)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		req := strings.Split(r.URL.Path, "/")
+		reqID := req[len(req)-1]
+		if reqID != id {
+			t.Errorf("reqID = %s, want %s", reqID, id)
+		}
+		w.WriteHeader(http.StatusNoContent)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	s := &gist.Service{
+		Username: "arsham",
+		Token:    "RDPgfHDgfDohsnYax2uH",
+		Logger:   getLogger(),
+		CacheDir: loc,
+		API:      ts.URL,
+	}
+	g = gist.Gist{
+		ID:  id,
+		URL: ts.URL,
+	}
+
+	if err := s.DeleteGist(g.ID); err != nil {
+		t.Errorf("g.DeleteGist(): err = %v, want nil", err)
+	}
+
+	if !called {
+		t.Error("endpoint wasn't called")
+	}
+}

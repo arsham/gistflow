@@ -5,22 +5,10 @@
 package tab
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/therecipe/qt/widgets"
 )
-
-type logger struct {
-	errorFunc    func(string)
-	criticalFunc func(string) widgets.QMessageBox__StandardButton
-	warningFunc  func(string)
-}
-
-func (l logger) Error(msg string)                                        { l.errorFunc(msg) }
-func (l logger) Critical(msg string) widgets.QMessageBox__StandardButton { return l.criticalFunc(msg) }
-func (l logger) Warning(msg string)                                      { l.warningFunc(msg) }
-func (l logger) Warningf(format string, a ...interface{})                { l.Warning(fmt.Sprintf(format, a...)) }
 
 func TestFile(t *testing.T) { tRunner.Run(func() { testFile(t) }) }
 func testFile(t *testing.T) {
