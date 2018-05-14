@@ -22,10 +22,10 @@ const (
 type Dialog struct {
 	widgets.QDialog
 
-	_ func()              `constructor:"init"`
-	_ func(*core.QRect)   `slot:"view"`
-	_ func(gist.Response) `slot:"add"`
-	_ func(string)        `signal:"openGist"`
+	_ func()            `constructor:"init"`
+	_ func(*core.QRect) `slot:"view"`
+	_ func(gist.Gist)   `slot:"add"`
+	_ func(string)      `signal:"openGist"`
 
 	input   *widgets.QLineEdit
 	results *widgets.QListView
@@ -95,7 +95,7 @@ func (d *Dialog) Model() *core.QAbstractItemModel {
 	return d.results.Model()
 }
 
-func (d *Dialog) add(r gist.Response) {
+func (d *Dialog) add(r gist.Gist) {
 	item := NewListItem(d)
 	item.GistID = r.ID
 	item.GistURL = r.URL

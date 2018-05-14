@@ -6,7 +6,7 @@ package tab
 
 import (
 	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/interface/messagebox"
+	"github.com/arsham/gisty/qt/messagebox"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
@@ -24,13 +24,14 @@ type Tab struct {
 	_ func(*gist.Gist)         `signal:"deleteGist"`
 
 	// TODO: add dirty property
-	messageBox   messagebox.Message
-	vBoxLayout   *widgets.QVBoxLayout
-	saveButton   *widgets.QPushButton
-	deleteButton *widgets.QPushButton
-	description  *widgets.QLineEdit
-	files        []*File
-	gist         *gist.Gist
+	messageBox     messagebox.Message
+	vBoxLayout     *widgets.QVBoxLayout // layout on gist level operations.
+	saveButton     *widgets.QPushButton
+	publicCheckBox *widgets.QCheckBox
+	deleteButton   *widgets.QPushButton
+	description    *widgets.QLineEdit
+	files          []*File
+	gist           *gist.Gist
 }
 
 func init() {
@@ -48,12 +49,14 @@ func (t *Tab) init() {
 	t.saveButton.SetToolTip("Saves the gist on github")
 	t.deleteButton = widgets.NewQPushButton2("Delete", t)
 	t.deleteButton.SetToolTip("Deletes the gist on github. This action is irreversible.")
+	t.publicCheckBox = widgets.NewQCheckBox2("Public", t)
 
 	t.description = widgets.NewQLineEdit(t)
 	t.description.SetToolTip("Set the gist's description")
 	t.description.SetPlaceholderText("Description")
 	butttons := widgets.NewQHBoxLayout()
 	hLayout := widgets.NewQHBoxLayout()
+	hLayout.AddWidget(t.publicCheckBox, 0, 0)
 	hLayout.AddWidget(t.description, 0, 0)
 	hLayout.AddLayout(butttons, 0)
 
@@ -121,6 +124,11 @@ func (t *Tab) ShowGist(tabWidget *widgets.QTabWidget, g *gist.Gist) {
 		t.saveButton.SetDisabled(true)
 	})
 	t.saveButton.SetDisabled(true)
+	if g.Public {
+		t.publicCheckBox.SetChecked(true)
+	}
+	t.publicCheckBox.SetDisabled(true)
+	t.publicCheckBox.SetToolTip("Unfortunately the API doesn't allow us to change this. You need to update it from your browser.")
 }
 
 // NewGist opens a new tab for creating a new gist.
@@ -143,6 +151,8 @@ func (t *Tab) NewGist(tabWidget *widgets.QTabWidget, label string) {
 			content.Content = f.Content().ToPlainText()
 			g.Files[f.FileName()] = content
 		}
+		g.Public = t.publicCheckBox.IsChecked()
+		t.publicCheckBox.SetDisabled(true)
 		t.CreateGist(g)
 		t.saveButton.SetDisabled(true)
 	})

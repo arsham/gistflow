@@ -19,8 +19,8 @@ const (
 type Container struct {
 	widgets.QListWidget
 
-	_ func()              `constructor:"init"`
-	_ func(gist.Response) `signal:"add"`
+	_ func()          `constructor:"init"`
+	_ func(gist.Gist) `signal:"add"`
 
 	items map[string]*widgets.QListWidgetItem
 }
@@ -34,7 +34,7 @@ func (c *Container) init() {
 	c.items = make(map[string]*widgets.QListWidgetItem, 10)
 }
 
-func (c *Container) add(r gist.Response) {
+func (c *Container) add(r gist.Gist) {
 	item := widgets.NewQListWidgetItem(c, 0)
 	description := r.Description
 	if description == "" {

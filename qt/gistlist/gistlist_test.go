@@ -35,7 +35,7 @@ func testTruncateDescription(t *testing.T) {
 
 	for _, tc := range tcs {
 		c := NewContainer(widgets.NewQWidget(nil, 0))
-		r := gist.Response{
+		r := gist.Gist{
 			Description: tc.text,
 		}
 		c.Add(r)
@@ -63,8 +63,8 @@ func testID(t *testing.T) {
 		id2 = "lezFNeVL7cZUWnM"
 	)
 	c := NewContainer(widgets.NewQWidget(nil, 0))
-	c.Add(gist.Response{ID: id1})
-	c.Add(gist.Response{ID: id2})
+	c.Add(gist.Gist{ID: id1})
+	c.Add(gist.Gist{ID: id2})
 	if c.ID(0) != id1 {
 		t.Errorf("c.ID(0) = %s, want %s", c.ID(0), id1)
 	}
@@ -81,8 +81,8 @@ func testDescription(t *testing.T) {
 		desciption2 = "JcuFLi"
 	)
 	c := NewContainer(widgets.NewQWidget(nil, 0))
-	c.Add(gist.Response{Description: desciption1})
-	c.Add(gist.Response{Description: desciption2})
+	c.Add(gist.Gist{Description: desciption1})
+	c.Add(gist.Gist{Description: desciption2})
 	if c.Description(0) != desciption1 {
 		t.Errorf("c.Description(0) = %s, want %s", c.Description(0), desciption1)
 	}
@@ -99,8 +99,8 @@ func testIndexID(t *testing.T) {
 		id2 = "bQFmUmPsgpZRNo8Y"
 	)
 	c := NewContainer(widgets.NewQWidget(nil, 0))
-	c.Add(gist.Response{ID: id1})
-	c.Add(gist.Response{ID: id2})
+	c.Add(gist.Gist{ID: id1})
+	c.Add(gist.Gist{ID: id2})
 	item := c.Item(0)
 	index := c.IndexFromItem(item)
 	if c.IndexID(index) != id1 {
@@ -121,8 +121,8 @@ func testIndexDescription(t *testing.T) {
 		desciption2 = "kNsiedEcfF"
 		c           = NewContainer(widgets.NewQWidget(nil, 0))
 	)
-	c.Add(gist.Response{Description: desciption1})
-	c.Add(gist.Response{Description: desciption2})
+	c.Add(gist.Gist{Description: desciption1})
+	c.Add(gist.Gist{Description: desciption2})
 	item := c.Item(0)
 	index := c.IndexFromItem(item)
 	if c.IndexDescription(index) != desciption1 {
@@ -143,7 +143,7 @@ func testEmptyDescription(t *testing.T) {
 		fileName = "LC7BVBWAuCXY"
 		c        = NewContainer(widgets.NewQWidget(nil, 0))
 	)
-	c.Add(gist.Response{
+	c.Add(gist.Gist{
 		ID: id,
 		Files: map[string]gist.File{
 			fileName: gist.File{},
@@ -162,8 +162,8 @@ func testRemoveItem(t *testing.T) {
 		id3 = "086vmZLyedK"
 		c   = NewContainer(widgets.NewQWidget(nil, 0))
 	)
-	c.Add(gist.Response{ID: id1})
-	c.Add(gist.Response{ID: id3})
+	c.Add(gist.Gist{ID: id1})
+	c.Add(gist.Gist{ID: id3})
 
 	currentLen := len(c.items)
 	if len(c.items) != currentLen {

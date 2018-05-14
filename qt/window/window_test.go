@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/interface/gistlist"
-	"github.com/arsham/gisty/interface/searchbox"
-	"github.com/arsham/gisty/interface/tab"
+	"github.com/arsham/gisty/qt/gistlist"
+	"github.com/arsham/gisty/qt/searchbox"
+	"github.com/arsham/gisty/qt/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"
@@ -51,7 +51,7 @@ type fakeClipboard struct {
 
 func (f *fakeClipboard) SetText(text string, mode gui.QClipboard__Mode) { f.textFunc(text, mode) }
 
-func setup(t *testing.T, name string, input []gist.Response, answers int) (*httptest.Server, *MainWindow, func(), error) {
+func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest.Server, *MainWindow, func(), error) {
 	var counter int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if counter >= answers {
@@ -233,11 +233,11 @@ func TestPopulate(t *testing.T) { tRunner.Run(func() { testPopulate(t) }) }
 func testPopulate(t *testing.T) {
 	name := "test"
 	size := 5
-	gres := gist.Response{
+	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
-	ts, window, cleanup, err := setup(t, name, []gist.Response{gres}, size)
+	ts, window, cleanup, err := setup(t, name, []gist.Gist{gres}, size)
 	if err != nil {
 		t.Error(err)
 		return
@@ -389,7 +389,7 @@ func TestClickViewGist(t *testing.T) { tRunner.Run(func() { testClickViewGist(t)
 func testClickViewGist(t *testing.T) {
 	name := "test"
 	var called bool
-	gres := gist.Response{
+	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
@@ -410,7 +410,7 @@ func testClickViewGist(t *testing.T) {
 	defer gistTs.Close()
 
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return
@@ -619,13 +619,13 @@ func testEmptyDescription(t *testing.T) {
 		fileName = "84nkJJG0"
 	)
 
-	gres := gist.Response{
+	gres := gist.Gist{
 		ID: "QXhJNchXAK",
 		Files: map[string]gist.File{
 			fileName: gist.File{Content: content},
 		},
 	}
-	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return
@@ -677,7 +677,7 @@ func TestClickOpenGist(t *testing.T) { tRunner.Run(func() { testClickOpenGist(t)
 func testClickOpenGist(t *testing.T) {
 	name := "test"
 	var called bool
-	gres := gist.Response{
+	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
@@ -698,7 +698,7 @@ func testClickOpenGist(t *testing.T) {
 	defer gistTs.Close()
 
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, []gist.Response{gres}, 10)
+	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return

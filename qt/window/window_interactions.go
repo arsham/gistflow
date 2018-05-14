@@ -5,9 +5,8 @@
 package window
 
 import (
-	"github.com/arsham/gisty/interface/gistlist"
-
-	"github.com/arsham/gisty/interface/tab"
+	"github.com/arsham/gisty/qt/gistlist"
+	"github.com/arsham/gisty/qt/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"

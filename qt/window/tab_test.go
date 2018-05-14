@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/interface/tab"
+	"github.com/arsham/gisty/qt/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"
@@ -630,7 +630,7 @@ func testDeleteGist(t *testing.T) {
 				file: gist.File{Content: content},
 			},
 		}
-		r = gist.Response{
+		r = gist.Gist{
 			ID: id,
 			Files: map[string]gist.File{
 				file: gist.File{Content: content},

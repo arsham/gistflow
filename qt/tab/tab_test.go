@@ -56,6 +56,9 @@ func testTab(t *testing.T) {
 	if tab.messageBox == nil {
 		t.Error("tab.messageBox cannot be nil")
 	}
+	if tab.publicCheckBox == nil {
+		t.Error("tab.publicCheckBox cannot be nil")
+	}
 }
 
 func TestTabSetGistContents(t *testing.T) { tRunner.Run(func() { testTabSetGistContents(t) }) }
@@ -194,7 +197,10 @@ func testSaveCheckContents(t *testing.T) {
 
 func TestNewGist(t *testing.T) { tRunner.Run(func() { testNewGist(t) }) }
 func testNewGist(t *testing.T) {
-	label := "clO6lNMXnzBQN"
+	var (
+		called bool
+		label  = "clO6lNMXnzBQN"
+	)
 	tabWidget := widgets.NewQTabWidget(nil)
 	tab := NewTab(tabWidget)
 	tab.NewGist(tabWidget, label)
@@ -210,6 +216,22 @@ func testNewGist(t *testing.T) {
 	}
 	if tab.gist == nil {
 		t.Error("tab.gist cannot be nil")
+	}
+	if !tab.publicCheckBox.IsEnabled() {
+		t.Error("tab.publicCheckBox is not enabled")
+	}
+
+	tab.ConnectCreateGist(func(g *gist.Gist) {
+		called = true
+	})
+	tab.SaveButton().Click()
+	if !called {
+		t.Error("didn't trigger the signal")
+	}
+
+	// see TestOpenGistPublicCheckBox
+	if tab.publicCheckBox.IsEnabled() {
+		t.Error("tab.publicCheckBox is enabled")
 	}
 }
 
@@ -337,7 +359,7 @@ func testDeleteGistConfirmation(t *testing.T) {
 	tab.ConnectDeleteGist(func(gs *gist.Gist) {
 		deleteCalled = true
 		if gs != g {
-			t.Errorf("gs = %s, want %s", gs, g)
+			t.Errorf("gs = %v, want %v", gs, g)
 		}
 	})
 	tab.ShowGist(tabWidget, g)
@@ -359,5 +381,35 @@ func testDeleteGistConfirmation(t *testing.T) {
 	}
 	if !deleteCalled {
 		t.Error("didn't send deletion signal")
+	}
+}
+
+func TestOpenGistPublicCheckBox(t *testing.T) { tRunner.Run(func() { testOpenGistPublicCheckBox(t) }) }
+func testOpenGistPublicCheckBox(t *testing.T) {
+	description := "qxwiWD1Kmlmqd"
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	g := &gist.Gist{
+		Description: description,
+	}
+	tab.ShowGist(tabWidget, g)
+	if tab.publicCheckBox.IsChecked() {
+		t.Error("Gist is not public, but the checkbox is checked")
+	}
+
+	tab.DestroyQWidget()
+	tab = NewTab(widgets.NewQWidget(nil, 0))
+	g = &gist.Gist{
+		Description: description,
+		Public:      true,
+	}
+	tab.ShowGist(tabWidget, g)
+	if !tab.publicCheckBox.IsChecked() {
+		t.Error("Gist is public, but the checkbox is not checked")
+	}
+	// because the gist API doesn't have this functionality, it should be
+	// disabled for opening existing gists.
+	if tab.publicCheckBox.IsEnabled() {
+		t.Error("tab.publicCheckBox is not disabled")
 	}
 }

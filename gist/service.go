@@ -41,7 +41,7 @@ func (s *Service) api() string {
 }
 
 // List fetches all gists for the user.
-func (s *Service) List(perPage, page int) ([]Response, error) {
+func (s *Service) List(perPage, page int) ([]Gist, error) {
 	if s.Token == "" {
 		return nil, ErrEmptyToken
 	}
@@ -75,7 +75,7 @@ func (s *Service) List(perPage, page int) ([]Response, error) {
 		return nil, err
 	}
 
-	var res []Response
+	var res []Gist
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err
@@ -84,10 +84,10 @@ func (s *Service) List(perPage, page int) ([]Response, error) {
 	return res, nil
 }
 
-// Iter returns a channel which emits new Response objects. It will follow the
+// Iter returns a channel which emits new Gist objects. It will follow the
 // paginations until it's exhausted.
-func (s *Service) Iter() chan Response {
-	ch := make(chan Response)
+func (s *Service) Iter() chan Gist {
+	ch := make(chan Gist)
 	go func() {
 		perPage := 40
 		for page := 1; ; page++ {

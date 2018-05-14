@@ -4,23 +4,16 @@
 
 package gist
 
-// Response is the response coming back from gist API.
-// TODO: merge this with Gist.
-type Response struct {
-	ID          string          `json:"id"`
-	URL         string          `json:"html_url"`
-	Description string          `json:"description"`
-	CreatedAt   string          `json:"created_at"`
-	UpdatedAt   string          `json:"updated_at"`
-	Files       map[string]File `json:"files"`
-}
-
-// Gist represents one gist.
+// Gist represents a gist coming back from a list response or when requesting a
+// single gist.
 type Gist struct {
 	ID          string          `json:"id"`
 	URL         string          `json:"url"`
 	HTMLURL     string          `json:"html_url"`
 	Description string          `json:"description"`
+	Public      bool            `json:"public"`
+	CreatedAt   string          `json:"created_at"`
+	UpdatedAt   string          `json:"updated_at"`
 	Files       map[string]File `json:"files"`
 }
 

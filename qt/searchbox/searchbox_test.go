@@ -138,8 +138,8 @@ func testFiltering(t *testing.T) {
 
 	g1.Description = description1
 	g2.Description = description2
-	d.Add(gist.Response{Description: description1})
-	d.Add(gist.Response{Description: description2})
+	d.Add(gist.Gist{Description: description1})
+	d.Add(gist.Gist{Description: description2})
 
 	if d.Model().RowCount(core.NewQModelIndex()) != 2 {
 		t.Errorf("RowCount() = %d, want 2", d.Model().RowCount(core.NewQModelIndex()))
@@ -180,8 +180,8 @@ func testKeepTopMostIndexOnResults(t *testing.T) {
 
 	g1.Description = description1
 	g2.Description = description2
-	d.Add(gist.Response{Description: description1})
-	d.Add(gist.Response{Description: description2})
+	d.Add(gist.Gist{Description: description1})
+	d.Add(gist.Gist{Description: description2})
 
 	app.SetActiveWindow(d)
 	d.View(parent.Geometry())
@@ -215,7 +215,7 @@ func testNagigatingSearchBox(t *testing.T, name string, dir *testlib.QTestEventL
 		g           = NewListItem(nil)
 	)
 	g.Description = description
-	d.Add(gist.Response{Description: description})
+	d.Add(gist.Gist{Description: description})
 
 	app.SetActiveWindow(d)
 	d.View(parent.Geometry())
@@ -238,7 +238,7 @@ func testOpenGistSlot(t *testing.T) {
 	app.SetActiveWindow(d)
 	d.Show()
 	defer d.Hide()
-	d.Add(gist.Response{ID: id})
+	d.Add(gist.Gist{ID: id})
 
 	d.ConnectOpenGist(func(text string) {
 		called = true
