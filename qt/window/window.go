@@ -98,9 +98,6 @@ func (m *MainWindow) setupUI() {
 	m.tabsWidget.SetTabsClosable(true)
 	m.tabsWidget.SetMovable(true)
 
-	tab1 := widgets.NewQWidget(m.tabsWidget, core.Qt__Widget)
-	tab1.SetObjectName("Untitled")
-	m.tabsWidget.AddTab(tab1, "Untitled")
 	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
 
 	verticalLayout.AddWidget(m.tabsWidget, 0, 0)
@@ -242,13 +239,16 @@ func (m *MainWindow) newGist(bool) {
 		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
 	})
 	t.ConnectCreateGist(func(g *gist.Gist) {
-		err := m.gistService.Create(*g)
+		newGist, err := m.gistService.Create(*g)
 		if err != nil {
 			msg := fmt.Sprintf("Could not create new gist: %s", err)
 			m.logger.Error(msg)
 			return
 		}
 		m.showNotification("New gist has been created")
+		t.GistCreated(&newGist)
+		m.searchbox.Add(newGist)
+		m.gistList.Add(newGist)
 	})
 }
 
@@ -265,11 +265,13 @@ func (m *MainWindow) openGist(id string) error {
 	t := tab.NewTab(m.tabsWidget)
 	t.ShowGist(m.tabsWidget, &rg)
 	m.tabGistList[id] = t
+
 	t.ConnectCopyToClipboard(func(text string) {
 		m.clipboard().SetText(text, gui.QClipboard__Clipboard)
 	})
+
 	t.ConnectUpdateGist(func(g *gist.Gist) {
-		err := m.gistService.Update(*g)
+		_, err := m.gistService.Update(*g)
 		if err != nil {
 			msg := fmt.Sprintf("Could not update the gist: %s", err)
 			m.logger.Error(msg)
@@ -279,7 +281,7 @@ func (m *MainWindow) openGist(id string) error {
 	})
 
 	t.ConnectDeleteFile(func(g *gist.Gist, name string) {
-		err := m.gistService.DeleteFile(*g, name)
+		_, err := m.gistService.DeleteFile(*g, name)
 		if err != nil {
 			msg := fmt.Sprintf("Could not delete file: %s", err)
 			m.logger.Error(msg)

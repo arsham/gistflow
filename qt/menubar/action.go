@@ -21,7 +21,6 @@ type Action struct {
 	Toolbar   *widgets.QAction
 	GistList  *widgets.QAction
 	Settings  *widgets.QAction
-	Sync      *widgets.QAction
 	NewGist   *widgets.QAction
 }
 
@@ -57,7 +56,4 @@ func (a *Action) init() {
 
 	a.Settings = widgets.NewQAction2("Settings", a)
 	a.Settings.SetObjectName("ActionSettings")
-
-	a.Sync = widgets.NewQAction2("Sync", a)
-	a.Sync.SetObjectName("ActionSync")
 }

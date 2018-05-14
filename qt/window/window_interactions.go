@@ -15,7 +15,7 @@ import (
 func (m *MainWindow) copyURLToClipboard(bool) {
 	widget := m.tabsWidget.CurrentWidget()
 	tab := tab.NewTabFromPointer(widget.Pointer())
-	m.clipboard().SetText(tab.URL(), gui.QClipboard__Clipboard)
+	m.clipboard().SetText(tab.HTMLURL(), gui.QClipboard__Clipboard)
 	m.showNotification("URL has been copied to clipboard")
 }
 

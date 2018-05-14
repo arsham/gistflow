@@ -37,7 +37,6 @@ func (m *MenuBar) init() {
 		m.actions.NewGist,
 		m.AddSeparator(),
 		m.actions.Settings,
-		m.actions.Sync,
 		m.AddSeparator(),
 		m.actions.Quit,
 	})

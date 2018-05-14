@@ -174,10 +174,6 @@ func testWindowStartupWidgets(t *testing.T) {
 		t.Error("window.dockWidget = nil, want *widgets.QDockWidget")
 		return
 	}
-	if window.tabsWidget.Count() < 1 {
-		t.Errorf("window.tabsWidget.Count() = %d, want at least 1", window.tabsWidget.Count())
-	}
-
 	if window.clipboard() == nil {
 		t.Error("window.clipboard() = nil, want *gui.QClipboard")
 		return
@@ -346,8 +342,8 @@ func testViewGist(t *testing.T) {
 	defer cleanup()
 	window.gistService.API = gistTs.URL
 
-	if window.tabsWidget.Count() != 1 {
-		t.Errorf("window.tabsWidget.Count() = %d, want 1", window.tabsWidget.Count())
+	if window.tabsWidget.Count() != 0 {
+		t.Errorf("window.tabsWidget.Count() = %d, want 0", window.tabsWidget.Count())
 		return
 	}
 
@@ -359,7 +355,7 @@ func testViewGist(t *testing.T) {
 		t.Errorf("window.openGist(%s) = %s, want nil", id, err)
 	}
 
-	newIndex := 2
+	newIndex := 1
 	if window.tabsWidget.Count() != newIndex {
 		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), newIndex)
 		return
@@ -494,28 +490,30 @@ func testOpeningGistTwice(t *testing.T) {
 	window.gistService.API = gistTs.URL
 
 	startingSize := window.tabsWidget.Count()
+	startingIndex := window.tabsWidget.CurrentIndex()
 	window.openGist(id1)
 	if window.tabsWidget.Count() != startingSize+1 {
 		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+1)
 	}
-	if window.tabsWidget.CurrentIndex() != 1 {
-		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 1", window.tabsWidget.CurrentIndex())
+	if window.tabsWidget.CurrentIndex() != startingIndex+1 {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want %d", window.tabsWidget.CurrentIndex(), startingIndex+1)
 	}
+	id1Index := window.tabsWidget.CurrentIndex()
 
 	window.openGist(id2)
 	if window.tabsWidget.Count() != startingSize+2 {
 		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+2)
 	}
-	if window.tabsWidget.CurrentIndex() != 2 {
-		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 2", window.tabsWidget.CurrentIndex())
+	if window.tabsWidget.CurrentIndex() != startingIndex+2 {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want %d", window.tabsWidget.CurrentIndex(), startingIndex+2)
 	}
 
 	window.openGist(id1)
 	if window.tabsWidget.Count() != startingSize+2 {
 		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+2)
 	}
-	if window.tabsWidget.CurrentIndex() != 1 {
-		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want 1", window.tabsWidget.CurrentIndex())
+	if window.tabsWidget.CurrentIndex() != id1Index {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want %d", window.tabsWidget.CurrentIndex(), id1Index)
 	}
 }
 
@@ -556,6 +554,7 @@ func testCopyURL(t *testing.T) {
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url = fmt.Sprintf("%s%s", api, r.URL.Path)
 		gres := gist.Gist{
+			HTMLURL: url,
 			Files: map[string]gist.File{
 				"vtsmQN": gist.File{Content: content},
 			},
@@ -951,7 +950,9 @@ func testNewGistSave(t *testing.T) {
 		name        = "test"
 		fileName    = "18I96IpY7p"
 		description = "apoLIQrkbXEK5LpSWt"
+		id          = "kUe"
 		called      bool
+		created     bool
 	)
 	newGistTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -971,8 +972,82 @@ func testNewGistSave(t *testing.T) {
 		if _, ok := g.Files[fileName]; !ok {
 			t.Errorf("%s not found in %v", fileName, g.Files)
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+
+		g.ID = id
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Write(b)
+	}))
+	defer newGistTS.Close()
+	_, window, cleanup, err := setup(t, name, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	window.gistService.API = newGistTS.URL
+	window.newGist(true)
+	tab := tab.NewTabFromPointer(window.tabsWidget.CurrentWidget().Pointer())
+	tab.SetDescription(description)
+	tab.Files()[0].SetFileName(fileName)
+	tab.ConnectGistCreated(func(g *gist.Gist) {
+		created = true
+		if g.Description != description {
+			t.Errorf("not the same gist: g.Description = %s, want %s", g.Description, description)
+		}
+	})
+
+	tab.SaveButton().Click()
+	if !called {
+		t.Error("didn't call the server")
+	}
+	if !created {
+		t.Error("didn't send the created signal")
+	}
+	index := window.tabsWidget.IndexOf(tab)
+	if window.tabsWidget.TabText(index) != fileName {
+		t.Errorf("window.tabsWidget.TabText(%d) = %s, want %s", window.tabsWidget.TabText(index), index, fileName)
+	}
+	if !window.gistList.HasID(id) {
+		t.Errorf("%s was not added to gistList", id)
+	}
+	if !window.searchbox.HasID(id) {
+		t.Errorf("%s was not added to searchbox", id)
+	}
+}
+
+func TestNewGistGlobalActions(t *testing.T) { tRunner.Run(func() { testNewGistGlobalActions(t) }) }
+func testNewGistGlobalActions(t *testing.T) {
+	var (
+		name         = "test"
+		fileName     = "Pv0LOCOHcuvPD"
+		description  = "9JC4ExxYevl1znrd3H"
+		called       bool
+		clipboardTxt string
+		g            = gist.Gist{
+			ID:      "SdsEUebhhBSx",
+			HTMLURL: "LISKELE1UyLThL6",
+			Files: map[string]gist.File{
+				fileName: gist.File{Content: "3NhvSGH"},
+			},
+		}
+	)
+	newGistTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Write(b)
 	}))
 	defer newGistTS.Close()
 	_, window, cleanup, err := setup(t, name, nil, 0)
@@ -991,6 +1066,22 @@ func testNewGistSave(t *testing.T) {
 	tab.SaveButton().Click()
 	if !called {
 		t.Error("didn't call the server")
+	}
+	window.clipboard = func() clipboard {
+		return &fakeClipboard{
+			textFunc: func(text string, mode gui.QClipboard__Mode) {
+				clipboardTxt = text
+			},
+		}
+	}
+	c := window.menubar.Actions().CopyURL
+	c.Trigger()
+	if clipboardTxt == "" {
+		t.Error("empty URL")
+		return
+	}
+	if clipboardTxt != tab.Gist().HTMLURL {
+		t.Errorf("clipboardTxt = `%s`, want `%s`", clipboardTxt, tab.Gist().HTMLURL)
 	}
 }
 

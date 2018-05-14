@@ -36,15 +36,11 @@ func (t *Toolbar) init() {
 
 }
 
-// Action returns the action.
-// func (t *Toolbar) Action() *menubar.Action { return t.action }
-
 // SetAction adds some of the menubar actions.
 func (t *Toolbar) SetAction(a *menubar.Action) {
 	t.AddActions([]*widgets.QAction{
 		a.NewGist,
 		a.InBrowser,
 		a.CopyURL,
-		a.Sync,
 	})
 }

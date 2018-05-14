@@ -287,8 +287,12 @@ func TestGistUpdateError(t *testing.T) {
 		},
 	}
 
-	if err := s.Update(g); err == nil {
+	r, err := s.Update(g)
+	if err == nil {
 		t.Error("g.Update(): err = nil, want error")
+	}
+	if !reflect.DeepEqual(r, gist.Gist{}) {
+		t.Errorf("g.Update(): gist = %v, want %v", r, gist.Gist{})
 	}
 }
 
@@ -327,13 +331,16 @@ func TestGistUpdate(t *testing.T) {
 			"file1": gist.File{Content: "KnL4DiGPsA"},
 		},
 	}
-
-	if err := s.Update(g); err != nil {
+	r, err := s.Update(g)
+	if err != nil {
 		t.Errorf("g.Update(): err = %v, want nil", err)
+	}
+	if !reflect.DeepEqual(r, g) {
+		t.Errorf("g.Update(): r = %v, want %v", r, g)
 	}
 }
 
-func TestNewGistBadURLError(t *testing.T) {
+func TestNewGistURLCheck(t *testing.T) {
 	var (
 		g     gist.Gist
 		url   string
@@ -349,6 +356,12 @@ func TestNewGistBadURLError(t *testing.T) {
 		state = strings.Contains(r.URL.Path, "/gists")
 		url = r.URL.Path
 		w.WriteHeader(http.StatusOK)
+
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.Write(b)
 	}))
 	defer ts.Close()
 	s := &gist.Service{
@@ -366,8 +379,12 @@ func TestNewGistBadURLError(t *testing.T) {
 		},
 	}
 
-	if err := s.Create(g); err != nil {
+	r, err := s.Create(g)
+	if err != nil {
 		t.Errorf("g.Create() = %s, want nil", err)
+	}
+	if !reflect.DeepEqual(r, g) {
+		t.Errorf("g.Update(): r = %v, want %v", r, g)
 	}
 	if !state {
 		t.Errorf("%s should contain `gists`", url)
@@ -405,8 +422,12 @@ func TestNewGistError(t *testing.T) {
 		},
 	}
 
-	if err := s.Create(g); err == nil {
+	r, err := s.Create(g)
+	if err == nil {
 		t.Error("g.Create() = nil, want error")
+	}
+	if !reflect.DeepEqual(r, gist.Gist{}) {
+		t.Errorf("g.Update(): r = %v, want %v", r, gist.Gist{})
 	}
 	if !called {
 		t.Error("server wasn't called")
@@ -454,8 +475,12 @@ func testNewGist(t *testing.T, code int) {
 		},
 	}
 
-	if err := s.Create(g); err != nil {
+	r, err := s.Create(g)
+	if err != nil {
 		t.Errorf("code(%d): g.Create() = %v, want nil", code, err)
+	}
+	if !reflect.DeepEqual(r, g) {
+		t.Errorf("g.Update(): r = %v, want %v", r, g)
 	}
 }
 
@@ -498,7 +523,12 @@ func TestRemoveFile(t *testing.T) {
 		if !reflect.DeepEqual(g.Files[file2], gist.File{}) {
 			t.Errorf("g.Files[%s] = %v, want %v", file2, g.Files[file2], gist.Gist{})
 		}
-		w.Write([]byte("{}"))
+		b, err := json.Marshal(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
 	}))
 	defer ts.Close()
 
@@ -518,10 +548,13 @@ func TestRemoveFile(t *testing.T) {
 		},
 	}
 
-	if err := s.DeleteFile(g, file2); err != nil {
+	r, err := s.DeleteFile(g, file2)
+	if err != nil {
 		t.Errorf("g.DeleteFile(): err = %v, want nil", err)
 	}
-
+	if !reflect.DeepEqual(r, g) {
+		t.Errorf("g.Update(): r = %v, want %v", r, g)
+	}
 	if !called {
 		t.Error("endpoint wasn't called")
 	}
@@ -568,11 +601,9 @@ func TestDeleteGist(t *testing.T) {
 		ID:  id,
 		URL: ts.URL,
 	}
-
 	if err := s.DeleteGist(g.ID); err != nil {
 		t.Errorf("g.DeleteGist(): err = %v, want nil", err)
 	}
-
 	if !called {
 		t.Error("endpoint wasn't called")
 	}

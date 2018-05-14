@@ -45,11 +45,7 @@ func testTabCreation(t *testing.T) {
 	}
 	defer cleanup()
 
-	if window.TabsWidget().Count() != 1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want 1", window.TabsWidget().Count())
-		return
-	}
-
+	initialCount := window.TabsWidget().Count()
 	tab := tab.NewTab(window.TabsWidget())
 	if tab == nil {
 		t.Error("NewTab(window.TabsWidget()) = nil, want *Tab")
@@ -57,6 +53,10 @@ func testTabCreation(t *testing.T) {
 	}
 
 	tab.ShowGist(window.TabsWidget(), g)
+	if window.TabsWidget().Count() != initialCount+1 {
+		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), initialCount+1)
+		return
+	}
 
 	index := window.TabsWidget().CurrentIndex()
 	shownTab := window.TabsWidget().Widget(index)

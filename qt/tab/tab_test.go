@@ -274,6 +274,20 @@ func testNewGistCheckContents(t *testing.T) {
 	}
 }
 
+func TestGistCreated(t *testing.T) { tRunner.Run(func() { testGistCreated(t) }) }
+func testGistCreated(t *testing.T) {
+	g := &gist.Gist{
+		ID: "rH0xmdXVDsMl0D7a3",
+	}
+	tabWidget := widgets.NewQTabWidget(nil)
+	tab := NewTab(widgets.NewQWidget(nil, 0))
+	tab.NewGist(tabWidget, "Puf3rJc")
+	tab.GistCreated(g)
+	if !reflect.DeepEqual(tab.gist, g) {
+		t.Errorf("tab.gist = %v, want %v", tab.gist, g)
+	}
+}
+
 // test when we add a new file, it should just remove it, otherwise it should
 // ask for permission.
 func TestDeleteFileSignals(t *testing.T) { tRunner.Run(func() { testDeleteFileSignals(t) }) }

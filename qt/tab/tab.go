@@ -21,6 +21,7 @@ type Tab struct {
 	_ func(string)             `slot:"fileDeleted"`
 	_ func(*gist.Gist)         `signal:"updateGist"`
 	_ func(*gist.Gist)         `signal:"createGist"`
+	_ func(*gist.Gist)         `signal:"GistCreated"`
 	_ func(*gist.Gist)         `signal:"deleteGist"`
 
 	// TODO: add dirty property
@@ -158,6 +159,14 @@ func (t *Tab) NewGist(tabWidget *widgets.QTabWidget, label string) {
 		t.publicCheckBox.SetDisabled(true)
 		t.CreateGist(g)
 		t.saveButton.SetDisabled(true)
+	})
+	t.ConnectGistCreated(func(g *gist.Gist) {
+		t.gist = g
+		index := tabWidget.IndexOf(t)
+		for label := range g.Files {
+			tabWidget.SetTabText(index, label)
+			break
+		}
 	})
 }
 

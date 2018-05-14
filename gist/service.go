@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -137,18 +138,10 @@ func (s *Service) Get(id string) (Gist, error) {
 	if r.StatusCode == http.StatusNotFound {
 		return Gist{}, ErrGistNotFound
 	}
-	body, err = ioutil.ReadAll(r.Body)
-	if err != nil {
-		return Gist{}, err
-	}
 
-	if err = saveCache(s.CacheDir, id, body); err != nil {
-		s.Logger.Warning(err.Error())
-	}
-
-	err = json.Unmarshal(body, &g)
+	g, err = s.readAndCache(r.Body, id)
 	if err != nil {
-		return Gist{}, err
+		return g, err
 	}
 
 	// TODO: because map keys are not ordered, the file array should become an
@@ -160,45 +153,47 @@ func (s *Service) Get(id string) (Gist, error) {
 }
 
 // Update returns an error if the remote API responds other than 200.
-func (s *Service) Update(g Gist) error {
+func (s *Service) Update(g Gist) (Gist, error) {
 	b, err := json.Marshal(g)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	url := s.withToken(g.URL)
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	defer res.Body.Close()
+
 	if res.StatusCode != http.StatusOK {
 		reason, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("error updating gist: %s", reason)
+		return Gist{}, fmt.Errorf("error updating gist: %s", reason)
 	}
-	return deleteCache(s.CacheDir, g.ID)
+
+	return s.readAndCache(res.Body, g.ID)
 }
 
 // Create returns an error if the remote API responds other than 200.
-func (s *Service) Create(g Gist) error {
+func (s *Service) Create(g Gist) (Gist, error) {
 	b, err := json.Marshal(g)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	url := s.withToken(s.API + "/gists")
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	defer res.Body.Close()
 
@@ -206,13 +201,13 @@ func (s *Service) Create(g Gist) error {
 	case http.StatusOK, http.StatusCreated:
 	default:
 		reason, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("error updating gist: %s", reason)
+		return Gist{}, fmt.Errorf("error updating gist: %s", reason)
 	}
-	return nil
+	return s.readAndCache(res.Body, g.ID)
 }
 
 // DeleteFile sends a request to the server to remove a file.
-func (s *Service) DeleteFile(g Gist, name string) error {
+func (s *Service) DeleteFile(g Gist, name string) (Gist, error) {
 	url := s.withToken(g.URL)
 	g = Gist{
 		Files: map[string]File{
@@ -221,23 +216,23 @@ func (s *Service) DeleteFile(g Gist, name string) error {
 	}
 	b, err := json.Marshal(g)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return Gist{}, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		reason, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("error updating gist: %s", reason)
+		return Gist{}, fmt.Errorf("error updating gist: %s", reason)
 	}
-	return deleteCache(s.CacheDir, g.ID)
+	return s.readAndCache(res.Body, g.ID)
 }
 
 // DeleteGist sends a request to the server to remove a gist.
@@ -262,6 +257,27 @@ func (s *Service) DeleteGist(id string) error {
 
 func (s *Service) withToken(url string) string {
 	return fmt.Sprintf("%s?access_token=%s", url, s.Token)
+}
+
+// readAndCache reads from r and fills out the returning Gist, while updating
+// the cache entry for the Gist.
+func (s *Service) readAndCache(r io.ReadCloser, id string) (Gist, error) {
+	g := Gist{}
+	body, err := ioutil.ReadAll(r)
+	if err != nil {
+		return Gist{}, err
+	}
+	err = json.Unmarshal(body, &g)
+	if err != nil {
+		return Gist{}, err
+	}
+	if id == "" {
+		id = g.ID
+	}
+	if err = saveCache(s.CacheDir, id, body); err != nil {
+		s.Logger.Warning(err.Error())
+	}
+	return g, nil
 }
 
 func fromCache(location, id string) ([]byte, error) {
