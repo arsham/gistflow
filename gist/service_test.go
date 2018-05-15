@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gistflow/gist"
 )
 
 func anyError(err error, list []error) bool {
@@ -198,7 +198,7 @@ func TestLoadFromCache(t *testing.T) {
 		id2       = "DFxIrjJLcneZbqcpR"
 	)
 
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestGistUpdateError(t *testing.T) {
 
 func TestGistUpdate(t *testing.T) {
 	var g gist.Gist
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +346,7 @@ func TestNewGistURLCheck(t *testing.T) {
 		url   string
 		state bool
 	)
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +396,7 @@ func TestNewGistError(t *testing.T) {
 		g      gist.Gist
 		called bool
 	)
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestNewGist(t *testing.T) {
 }
 func testNewGist(t *testing.T, code int) {
 	var g gist.Gist
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,7 +491,7 @@ func TestRemoveFile(t *testing.T) {
 		file2  = "file2"
 	)
 	var g gist.Gist
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,7 +566,7 @@ func TestDeleteGist(t *testing.T) {
 		id     = "KN3ixjMQazpitCVP82"
 	)
 	var g gist.Gist
-	loc, err := ioutil.TempDir("", "gisty")
+	loc, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		t.Fatal(err)
 	}

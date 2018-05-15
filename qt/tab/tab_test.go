@@ -12,7 +12,7 @@ import (
 
 	"github.com/therecipe/qt/core"
 
-	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gistflow/gist"
 	"github.com/therecipe/qt/widgets"
 )
 

@@ -10,14 +10,14 @@ import (
 	"os"
 	"path"
 
-	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/qt/conf"
-	"github.com/arsham/gisty/qt/gistlist"
-	"github.com/arsham/gisty/qt/menubar"
-	"github.com/arsham/gisty/qt/messagebox"
-	"github.com/arsham/gisty/qt/searchbox"
-	"github.com/arsham/gisty/qt/tab"
-	"github.com/arsham/gisty/qt/toolbar"
+	"github.com/arsham/gistflow/gist"
+	"github.com/arsham/gistflow/qt/conf"
+	"github.com/arsham/gistflow/qt/gistlist"
+	"github.com/arsham/gistflow/qt/menubar"
+	"github.com/arsham/gistflow/qt/messagebox"
+	"github.com/arsham/gistflow/qt/searchbox"
+	"github.com/arsham/gistflow/qt/tab"
+	"github.com/arsham/gistflow/qt/toolbar"
 	"github.com/pkg/errors"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -67,7 +67,7 @@ func init() {
 func (m *MainWindow) Display(app *widgets.QApplication) error {
 	var err error
 	if m.name == "" {
-		m.name = "gisty"
+		m.name = "gistflow"
 	}
 	m.SetApp(app)
 	m.Show()
@@ -108,7 +108,7 @@ func (m *MainWindow) interactWithUser() {
 
 func (m *MainWindow) setupUI() {
 	if m.ObjectName() == "" {
-		m.SetObjectName("gisty")
+		m.SetObjectName("gistflow")
 	}
 	if m.logger == nil {
 		m.logger = messagebox.New(m)
@@ -165,11 +165,11 @@ func (m *MainWindow) setupUI() {
 	m.AddToolBar(core.Qt__TopToolBarArea, m.toolBar)
 	m.toolBar.SetAction(m.menubar.Actions())
 
-	m.icon = gui.NewQIcon5("./qml/app.ico")
+	m.icon = gui.NewQIcon5("./qml/v1/app.ico")
 	m.sysTray = widgets.NewQSystemTrayIcon(m)
 	m.sysTray.SetIcon(m.icon)
 	m.sysTray.SetVisible(true)
-	m.sysTray.SetToolTip("Gisty")
+	m.sysTray.SetToolTip("GistFlow")
 	m.sysTray.SetContextMenu(m.menubar.Options())
 
 	m.SetWindowIcon(m.icon)

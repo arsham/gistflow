@@ -5,7 +5,7 @@
 package tab
 
 import (
-	"github.com/arsham/gisty/qt/messagebox"
+	"github.com/arsham/gistflow/qt/messagebox"
 	"github.com/therecipe/qt/widgets"
 )
 

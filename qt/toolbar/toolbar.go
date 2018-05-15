@@ -5,7 +5,7 @@
 package toolbar
 
 import (
-	"github.com/arsham/gisty/qt/menubar"
+	"github.com/arsham/gistflow/qt/menubar"
 	"github.com/therecipe/qt/widgets"
 )
 

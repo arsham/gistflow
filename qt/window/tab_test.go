@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/qt/tab"
+	"github.com/arsham/gistflow/gist"
+	"github.com/arsham/gistflow/qt/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"

@@ -1,4 +1,4 @@
-package: github.com/arsham/gisty
+package: github.com/arsham/gistflow
 import:
 - package: github.com/pkg/errors
 ignore:

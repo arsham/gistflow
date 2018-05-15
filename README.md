@@ -1,7 +1,7 @@
-# Gisty
+# GistFlow
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
-[![GoDoc](https://godoc.org/github.com/arsham/gisty?status.svg)](http://godoc.org/github.com/arsham/gisty)
-[![Go Report Card](https://goreportcard.com/badge/github.com/arsham/gisty)](https://goreportcard.com/report/github.com/arsham/gisty)
+[![GoDoc](https://godoc.org/github.com/arsham/gistflow?status.svg)](http://godoc.org/github.com/arsham/gistflow)
+[![Go Report Card](https://goreportcard.com/badge/github.com/arsham/gistflow)](https://goreportcard.com/report/github.com/arsham/gistflow)
 
 A Qt application for managing your gists.
 
@@ -41,7 +41,7 @@ This gives the application the access to read and write gists.
 Use of this source code is governed by the LGPL v3 license. License can be found
 in the [LICENSE](./LICENSE) file.
 
-[releases]: https://github.com/arsham/gisty/releases
+[releases]: https://github.com/arsham/gistflow/releases
 [therecipe]: https://github.com/therecipe/qt
 [ccache]: https://gist.github.com/arsham/d6d01e94b2ffe19d101123236677256d
-[issues]: https://github.com/arsham/gisty/issues
+[issues]: https://github.com/arsham/gistflow/issues

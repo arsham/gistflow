@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/arsham/gisty/qt/window"
+	"github.com/arsham/gistflow/qt/window"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )

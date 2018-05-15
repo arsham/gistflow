@@ -15,7 +15,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gistflow/gist"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -53,7 +53,7 @@ func testSettings(name string) (*core.QSettings, func()) {
 	s := core.NewQSettings3(
 		core.QSettings__NativeFormat,
 		core.QSettings__UserScope,
-		"gisty",
+		"gistflow",
 		name,
 		nil,
 	)
@@ -85,7 +85,7 @@ func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest
 		errorFunc:   func(string) {},
 		warningFunc: func(string) {},
 	}
-	cacheDir, err := ioutil.TempDir("", "gisty")
+	cacheDir, err := ioutil.TempDir("", "gistflow")
 	if err != nil {
 		return nil, nil, nil, err
 	}

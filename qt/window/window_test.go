@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arsham/gisty/gist"
-	"github.com/arsham/gisty/qt/conf"
-	"github.com/arsham/gisty/qt/gistlist"
-	"github.com/arsham/gisty/qt/searchbox"
-	"github.com/arsham/gisty/qt/tab"
+	"github.com/arsham/gistflow/gist"
+	"github.com/arsham/gistflow/qt/conf"
+	"github.com/arsham/gistflow/qt/gistlist"
+	"github.com/arsham/gistflow/qt/searchbox"
+	"github.com/arsham/gistflow/qt/tab"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/testlib"
@@ -1074,7 +1074,6 @@ func testAfterConfiguration(t *testing.T) {
 	}
 	defer cleanup()
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(111111)
 		called <- struct{}{}
 	}))
 	defer gistTs.Close()
