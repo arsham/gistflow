@@ -32,13 +32,12 @@ func getGist(id, label, content string) *gist.Gist {
 func TestTabCreation(t *testing.T) { tRunner.Run(func() { testTabCreation(t) }) }
 func testTabCreation(t *testing.T) {
 	var (
-		name    = "test"
 		content = "fLGLysiOuxReut\nASUonvyd"
 		label   = "LpqrRCgBBYY"
 		g       = getGist("uWIkJYdkFuVwYcyy", label, content)
 	)
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -85,9 +84,8 @@ func testTabCreation(t *testing.T) {
 func TestTabIDFromIndex(t *testing.T) { tRunner.Run(func() { testTabIDFromIndex(t) }) }
 func testTabIDFromIndex(t *testing.T) {
 	var (
-		name = "test"
-		id1  = "mbzsNwJS"
-		id2  = "eulYvWSUHubADRV"
+		id1 = "mbzsNwJS"
+		id2 = "eulYvWSUHubADRV"
 	)
 
 	gres := gist.Gist{
@@ -105,7 +103,7 @@ func testTabIDFromIndex(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -149,7 +147,7 @@ func testSwitchTabs(t *testing.T) {
 }
 
 func testSwitchTabsOnWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
-	_, window, cleanup, err := setup(t, "test", nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -199,7 +197,7 @@ func testMovingTabs(t *testing.T) {
 }
 
 func testMovingTabsOnTabWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
-	_, window, cleanup, err := setup(t, "test", nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -250,10 +248,9 @@ func testMovingTabsOnTabWidget(t *testing.T, name string, f func(*MainWindow) ke
 func TestRemoveOpenTab(t *testing.T) { tRunner.Run(func() { testRemoveOpenTab(t) }) }
 func testRemoveOpenTab(t *testing.T) {
 	var (
-		name = "test"
-		id1  = "mbzsNwJS"
-		id2  = "eulYvWSUHubADRV"
-		id3  = "zdXyiCAdDkG"
+		id1 = "mbzsNwJS"
+		id2 = "eulYvWSUHubADRV"
+		id3 = "zdXyiCAdDkG"
 	)
 
 	files := map[string]gist.File{
@@ -272,7 +269,7 @@ func testRemoveOpenTab(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -316,14 +313,10 @@ func testRemoveOpenTab(t *testing.T) {
 
 func TestWindowClickCloseTab(t *testing.T) { tRunner.Run(func() { testWindowClickCloseTab(t) }) }
 func testWindowClickCloseTab(t *testing.T) {
-	var (
-		name   = "test"
-		called bool
-	)
-
+	var called bool
 	g := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -352,13 +345,13 @@ func testWindowClickCloseTab(t *testing.T) {
 	window.TabsWidget().TabCloseRequested(index)
 
 	if !called {
-		t.Errorf("%s: didn't close the tab", name)
+		t.Errorf("%s: didn't close the tab", appName)
 	}
 	if window.TabsWidget().Count() != currentSize-1 {
-		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", name, window.TabsWidget().Count(), currentSize-1)
+		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", appName, window.TabsWidget().Count(), currentSize-1)
 	}
 	if window.TabsWidget().IndexOf(tab) != -1 {
-		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", name, window.TabsWidget().IndexOf(tab), -1)
+		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", appName, window.TabsWidget().IndexOf(tab), -1)
 	}
 
 	if _, ok := window.tabGistList[g.ID]; ok {
@@ -378,7 +371,7 @@ func testShortcutTabClose(t *testing.T) {
 
 func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) keyReleaseEventWidget) {
 	var called bool
-	_, window, cleanup, err := setup(t, "test", nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -427,7 +420,6 @@ func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) k
 func TestMultipleFileGist(t *testing.T) { tRunner.Run(func() { testMultipleFileGist(t) }) }
 func testMultipleFileGist(t *testing.T) {
 	var (
-		name     = "test"
 		content1 = "fLGLysiOuxReutASUonvyd"
 		content2 = "zXLpDTgdCZtmxiZDqDQJAcEZ"
 		label1   = "LpqrRCgBBYY"
@@ -441,7 +433,7 @@ func testMultipleFileGist(t *testing.T) {
 		}
 	)
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -477,7 +469,6 @@ func testMultipleFileGist(t *testing.T) {
 func TestCopyContents(t *testing.T) { tRunner.Run(func() { testCopyContents(t) }) }
 func testCopyContents(t *testing.T) {
 	var (
-		name     = "test"
 		content1 = "fLGLysiOuxReutASUonvyd"
 		content2 = "zXLpDTgdCZtmxiZDqDQJAcEZ"
 		label1   = "LpqrRCgBBYY"
@@ -500,7 +491,7 @@ func testCopyContents(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -535,7 +526,6 @@ func testCopyContents(t *testing.T) {
 func TestDeleteFile(t *testing.T) { tRunner.Run(func() { testDeleteFile(t) }) }
 func testDeleteFile(t *testing.T) {
 	var (
-		name     = "test"
 		content1 = "WiVxf9eFeqQtdAm12wl"
 		content2 = "FRPdPlkV"
 		file1    = "Vea1UGy61WK4rEL"
@@ -561,7 +551,7 @@ func testDeleteFile(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -618,7 +608,6 @@ func testDeleteFile(t *testing.T) {
 func TestDeleteGist(t *testing.T) { tRunner.Run(func() { testDeleteGist(t) }) }
 func testDeleteGist(t *testing.T) {
 	var (
-		name      = "test"
 		id        = "sRtW06Rs8u"
 		content   = "cF9KLDx46o"
 		file      = "QEcsU5y7"
@@ -647,7 +636,7 @@ func testDeleteGist(t *testing.T) {
 		w.Write(b)
 	}))
 	defer gistTs.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return

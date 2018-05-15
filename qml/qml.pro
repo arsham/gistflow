@@ -37,7 +37,8 @@ FORMS += \
     gist.ui \
     searchbox.ui \
     create.ui \
-    tabheader.ui
+    tabheader.ui \
+    settings.ui
 
 DISTFILES += \
     ../app.ico

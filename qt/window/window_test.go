@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/qt/conf"
 	"github.com/arsham/gisty/qt/gistlist"
 	"github.com/arsham/gisty/qt/searchbox"
 	"github.com/arsham/gisty/qt/tab"
@@ -26,88 +26,10 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-var app *widgets.QApplication
-
-func TestMain(m *testing.M) {
-	app = widgets.NewQApplication(len(os.Args), os.Args)
-	go func() { app.Exit(m.Run()) }()
-	app.Exec()
-}
-
-type logger struct {
-	criticalFunc func(string) widgets.QMessageBox__StandardButton
-	errorFunc    func(string)
-	warningFunc  func(string)
-}
-
-func (l logger) Critical(msg string) widgets.QMessageBox__StandardButton { return l.criticalFunc(msg) }
-func (l logger) Error(msg string)                                        { l.errorFunc(msg) }
-func (l logger) Warning(msg string)                                      { l.warningFunc(msg) }
-func (l logger) Warningf(format string, a ...interface{})                { l.Warning(fmt.Sprintf(format, a...)) }
-
-type fakeClipboard struct {
-	textFunc func(string, gui.QClipboard__Mode)
-}
-
-func (f *fakeClipboard) SetText(text string, mode gui.QClipboard__Mode) { f.textFunc(text, mode) }
-
-func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest.Server, *MainWindow, func(), error) {
-	var counter int
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if counter >= answers {
-			w.Write([]byte("[\n]"))
-			return
-		}
-		counter++
-		b, err := json.Marshal(input)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		w.Write(b)
-	}))
-	l := &logger{
-		errorFunc:   func(string) {},
-		warningFunc: func(string) {},
-	}
-	l2 := &logger{
-		errorFunc:   func(string) {},
-		warningFunc: func(string) {},
-	}
-	cacheDir, err := ioutil.TempDir("", "gisty")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	window := NewMainWindow(nil, 0)
-	window.gistService = gist.Service{
-		Username: "arsham",
-		Token:    "token",
-		API:      ts.URL,
-		CacheDir: cacheDir,
-		Logger:   l2,
-	}
-	window.SetApp(app)
-	window.name = name
-	window.logger = l
-	window.clipboard = func() clipboard {
-		return &fakeClipboard{textFunc: func(text string, mode gui.QClipboard__Mode) {}}
-	}
-
-	return ts, window, func() {
-		ts.Close()
-		window.Hide()
-		s := getSettings(name)
-		s.Clear()
-		os.RemoveAll(cacheDir)
-	}, nil
-}
-
 // testing vanilla setup
 func TestWindowStartupWidgets(t *testing.T) { tRunner.Run(func() { testWindowStartupWidgets(t) }) }
 func testWindowStartupWidgets(t *testing.T) {
-	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -187,9 +109,8 @@ func testWindowStartupWidgets(t *testing.T) {
 
 func TestPopulateError(t *testing.T) { tRunner.Run(func() { testPopulateError(t) }) }
 func testPopulateError(t *testing.T) {
-	name := "test"
 	called := make(chan struct{})
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -227,13 +148,12 @@ func testPopulateError(t *testing.T) {
 
 func TestPopulate(t *testing.T) { tRunner.Run(func() { testPopulate(t) }) }
 func testPopulate(t *testing.T) {
-	name := "test"
 	size := 5
 	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
 	}
-	ts, window, cleanup, err := setup(t, name, []gist.Gist{gres}, size)
+	ts, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, size)
 	if err != nil {
 		t.Error(err)
 		return
@@ -262,8 +182,7 @@ func testPopulate(t *testing.T) {
 
 func TestLoadingGeometry(t *testing.T) { tRunner.Run(func() { testLoadingGeometry(t) }) }
 func testLoadingGeometry(t *testing.T) {
-	name := "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -273,12 +192,20 @@ func testLoadingGeometry(t *testing.T) {
 	x, y, w, h := 400, 500, 600, 700
 	tmpObj := widgets.NewQWidget(nil, 0)
 	tmpObj.SetGeometry2(x, y, w, h)
-	window.settings = getSettings(name)
+	settings, cleanup2 := testSettings(appName)
+	defer cleanup2()
 	size := tmpObj.SaveGeometry()
-	window.settings.SetValue(mainWindowGeometry, core.NewQVariant15(size))
-	window.settings.Sync()
+	settings.SetValue(mainWindowGeometry, core.NewQVariant15(size))
+	settings.SetValue(conf.AccessToken, core.NewQVariant17("zYhdGyNiTRuzxcW2j"))
+	settings.SetValue(conf.Username, core.NewQVariant17("fB3RZg"))
+	settings.Sync()
 
-	window.loadSettings()
+	window.settings, err = conf.New(appName)
+	if err != nil {
+		t.Errorf("getting settings: %v", err)
+		return
+	}
+	window.lastGeometry()
 	geometry := window.Geometry()
 	check := func(name string, size, with int) {
 		if size != with {
@@ -305,7 +232,6 @@ func TestViewGist(t *testing.T) { tRunner.Run(func() { testViewGist(t) }) }
 func testViewGist(t *testing.T) {
 	var (
 		called   bool
-		name     = "test"
 		id       = "uWIkJYdkFuVwYcyy"
 		badID    = "kJuZxkDCBp"
 		fileName = "LpqrRCgBBYY"
@@ -334,7 +260,7 @@ func testViewGist(t *testing.T) {
 	}))
 	defer gistTs.Close()
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -383,7 +309,6 @@ func testViewGist(t *testing.T) {
 
 func TestClickViewGist(t *testing.T) { tRunner.Run(func() { testClickViewGist(t) }) }
 func testClickViewGist(t *testing.T) {
-	name := "test"
 	var called bool
 	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
@@ -406,7 +331,7 @@ func testClickViewGist(t *testing.T) {
 	defer gistTs.Close()
 
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
+	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return
@@ -458,9 +383,8 @@ func testClickViewGist(t *testing.T) {
 func TestOpeningGistTwice(t *testing.T) { tRunner.Run(func() { testOpeningGistTwice(t) }) }
 func testOpeningGistTwice(t *testing.T) {
 	var (
-		name = "test"
-		id1  = "mbzsNwJS"
-		id2  = "eulYvWSUHubADRV"
+		id1 = "mbzsNwJS"
+		id2 = "eulYvWSUHubADRV"
 	)
 
 	files := map[string]gist.File{
@@ -480,7 +404,7 @@ func testOpeningGistTwice(t *testing.T) {
 	}))
 	defer gistTs.Close()
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -519,9 +443,8 @@ func testOpeningGistTwice(t *testing.T) {
 
 func TestToggle(t *testing.T) { tRunner.Run(func() { testToggle(t) }) }
 func testToggle(t *testing.T) {
-	name := "test"
 	window := NewMainWindow(nil, 0)
-	window.name = name
+	window.name = appName
 	defer window.Hide()
 
 	app.SetActiveWindow(window)
@@ -543,7 +466,6 @@ func testToggle(t *testing.T) {
 func TestCopyURL(t *testing.T) { tRunner.Run(func() { testCopyURL(t) }) }
 func testCopyURL(t *testing.T) {
 	var (
-		name     = "test"
 		id1      = "wqWKsfoQevEbGjhmz"
 		content  = "AFMQydAKTiJLa"
 		id2      = "yuaosJCTsGUqEldvigi"
@@ -568,7 +490,7 @@ func testCopyURL(t *testing.T) {
 	}))
 	defer gistTs.Close()
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -613,7 +535,6 @@ func testCopyURL(t *testing.T) {
 func TestEmptyDescription(t *testing.T) { tRunner.Run(func() { testEmptyDescription(t) }) }
 func testEmptyDescription(t *testing.T) {
 	var (
-		name     = "test"
 		content  = "CNF5EmQJxiGvzwedbmTME3p0Y"
 		fileName = "84nkJJG0"
 	)
@@ -624,7 +545,7 @@ func testEmptyDescription(t *testing.T) {
 			fileName: gist.File{Content: content},
 		},
 	}
-	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
+	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return
@@ -642,7 +563,7 @@ func testEmptyDescription(t *testing.T) {
 
 func TestOpenSearchBox(t *testing.T) { tRunner.Run(func() { testOpenSearchBox(t) }) }
 func testOpenSearchBox(t *testing.T) {
-	_, window, cleanup, err := setup(t, "test", nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -674,7 +595,6 @@ func testOpenSearchBox(t *testing.T) {
 
 func TestClickOpenGist(t *testing.T) { tRunner.Run(func() { testClickOpenGist(t) }) }
 func testClickOpenGist(t *testing.T) {
-	name := "test"
 	var called bool
 	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
@@ -697,7 +617,7 @@ func testClickOpenGist(t *testing.T) {
 	defer gistTs.Close()
 
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, []gist.Gist{gres}, 10)
+	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
 		return
@@ -748,7 +668,6 @@ func testClickOpenGist(t *testing.T) {
 func TestUpdateGistError(t *testing.T) { tRunner.Run(func() { testUpdateGistError(t) }) }
 func testUpdateGistError(t *testing.T) {
 	var (
-		name       = "test"
 		id         = "nb4X55PupEo0bmwM"
 		content    = "XzdlfdVudcyYfpm"
 		fileName   = "PichzTJDNn"
@@ -780,7 +699,7 @@ func testUpdateGistError(t *testing.T) {
 	}))
 	defer gistTs.Close()
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -818,7 +737,6 @@ func testUpdateGistError(t *testing.T) {
 func TestUpdateGist(t *testing.T) { tRunner.Run(func() { testUpdateGist(t) }) }
 func testUpdateGist(t *testing.T) {
 	var (
-		name       = "test"
 		id         = "D4cFvlqRnVg"
 		content    = "uKkKeExm8yyJJZEvNFcj"
 		fileName   = "OaBdnMbHtq1Y6"
@@ -849,7 +767,7 @@ func testUpdateGist(t *testing.T) {
 	}))
 	defer gistTs.Close()
 	gres.URL = fmt.Sprintf("%s/gists/%s", gistTs.URL, gres.ID)
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -877,8 +795,7 @@ func testUpdateGist(t *testing.T) {
 
 func TestNewGist(t *testing.T) { tRunner.Run(func() { testNewGist(t) }) }
 func testNewGist(t *testing.T) {
-	var name = "test"
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -908,7 +825,6 @@ func testNewGist(t *testing.T) {
 func TestNewGistSaveError(t *testing.T) { tRunner.Run(func() { testNewGistSaveError(t) }) }
 func testNewGistSaveError(t *testing.T) {
 	var (
-		name        = "test"
 		called      bool
 		errorCalled bool
 	)
@@ -919,7 +835,7 @@ func testNewGistSaveError(t *testing.T) {
 	}))
 	defer newGistTS.Close()
 
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -947,7 +863,6 @@ func testNewGistSaveError(t *testing.T) {
 func TestNewGistSave(t *testing.T) { tRunner.Run(func() { testNewGistSave(t) }) }
 func testNewGistSave(t *testing.T) {
 	var (
-		name        = "test"
 		fileName    = "18I96IpY7p"
 		description = "apoLIQrkbXEK5LpSWt"
 		id          = "kUe"
@@ -984,7 +899,7 @@ func testNewGistSave(t *testing.T) {
 		w.Write(b)
 	}))
 	defer newGistTS.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -1025,7 +940,6 @@ func testNewGistSave(t *testing.T) {
 func TestNewGistGlobalActions(t *testing.T) { tRunner.Run(func() { testNewGistGlobalActions(t) }) }
 func testNewGistGlobalActions(t *testing.T) {
 	var (
-		name         = "test"
 		fileName     = "Pv0LOCOHcuvPD"
 		description  = "9JC4ExxYevl1znrd3H"
 		called       bool
@@ -1050,7 +964,7 @@ func testNewGistGlobalActions(t *testing.T) {
 		w.Write(b)
 	}))
 	defer newGistTS.Close()
-	_, window, cleanup, err := setup(t, name, nil, 0)
+	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -1085,4 +999,112 @@ func testNewGistGlobalActions(t *testing.T) {
 	}
 }
 
-// Test closing dirty gists
+func TestEmptyTokenAndUsername(t *testing.T) { tRunner.Run(func() { testEmptyTokenAndUsername(t) }) }
+func testEmptyTokenAndUsername(t *testing.T) {
+	var err error
+	_, window, cleanup, err := setup(t, appName, nil, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+
+	// settings, cleanup2 := testSettings(appName)
+	// defer cleanup2()
+	// settings.Remove(conf.AccessToken)
+	// settings.Remove(conf.Username)
+	// settings.Sync()
+
+	window.Display(app)
+
+	tab := window.tabsWidget.CurrentWidget()
+	w := conf.NewTabFromPointer(tab.Pointer())
+	if w.Pointer() == nil {
+		t.Errorf("didn't find conf tab")
+	}
+}
+
+func TestWithTokenAndUsername(t *testing.T) { tRunner.Run(func() { testWithTokenAndUsername(t) }) }
+func testWithTokenAndUsername(t *testing.T) {
+	called := make(chan struct{})
+	gres := gist.Gist{
+		ID:          "WdeDv204lp",
+		Description: "HmK2lZP9w4QC",
+	}
+
+	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called <- struct{}{}
+	}))
+	defer gistTs.Close()
+
+	window.gistService.API = gistTs.URL
+	settings, cleanup2 := testSettings(appName)
+	defer cleanup2()
+	settings.SetValue(conf.AccessToken, core.NewQVariant17("KgeU5R2KAq9mHiZc0V"))
+	settings.SetValue(conf.Username, core.NewQVariant17("SjnmG9dECJKUowzRVivpb76lcH"))
+	settings.Sync()
+
+	window.Display(app)
+
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Error("didn't call the server")
+	}
+}
+
+func TestAfterConfiguration(t *testing.T) { tRunner.Run(func() { testAfterConfiguration(t) }) }
+func testAfterConfiguration(t *testing.T) {
+	called := make(chan struct{})
+	gres := gist.Gist{
+		ID:          "WdeDv204lp",
+		Description: "HmK2lZP9w4QC",
+	}
+
+	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup()
+	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(111111)
+		called <- struct{}{}
+	}))
+	defer gistTs.Close()
+
+	window.gistService.API = gistTs.URL
+
+	window.Display(app)
+
+	currentTab := window.tabsWidget.CurrentWidget()
+	tab := conf.NewTabFromPointer(currentTab.Pointer())
+	if tab.Pointer() == nil {
+		t.Error("didn't find the config tab")
+		return
+	}
+
+	// without entering it should not call the server
+	tab.Close()
+	select {
+	case <-called:
+		t.Error("didn't expect to call the server")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	tab.UsernameInput.SetText("4xKmhkWG0WvIzPi4")
+	tab.AccessTokenInput.SetText("H3iU3XdqlUzTuE2m")
+	tab.Close()
+
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Error("didn't call the server")
+	}
+}

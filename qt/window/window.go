@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/arsham/gisty/gist"
+	"github.com/arsham/gisty/qt/conf"
 	"github.com/arsham/gisty/qt/gistlist"
 	"github.com/arsham/gisty/qt/menubar"
 	"github.com/arsham/gisty/qt/messagebox"
@@ -39,7 +40,7 @@ type MainWindow struct {
 
 	name        string // namespace in setting file
 	app         *widgets.QApplication
-	settings    *core.QSettings
+	settings    *conf.Settings
 	logger      messagebox.Message
 	gistService gist.Service
 
@@ -63,17 +64,46 @@ func init() {
 }
 
 // Display shows the main window.
-func (m *MainWindow) Display() error {
+func (m *MainWindow) Display(app *widgets.QApplication) error {
+	var err error
 	if m.name == "" {
 		m.name = "gisty"
 	}
-
-	m.settings = getSettings(m.name)
-	m.loadSettings()
-	go m.populate()
+	m.SetApp(app)
 	m.Show()
-	widgets.QApplication_Exec()
+
+	m.settings, err = conf.New(m.name)
+	if err != nil {
+		m.showSettings()
+		return nil
+	}
+
+	m.interactWithUser()
 	return nil
+}
+
+func (m *MainWindow) showSettings() {
+	m.lastGeometry()
+	m.app.ConnectAboutToQuit(m.recordGeometry)
+	t := conf.NewTab(m.tabsWidget)
+	t.SetSettings(m.settings)
+	m.tabsWidget.AddTab(t, "Settings")
+	m.tabsWidget.SetCurrentWidget(t)
+	tabIndex := m.tabsWidget.IndexOf(t)
+	m.tabsWidget.ConnectTabCloseRequested(func(index int) {
+		if index == tabIndex {
+			m.recordGeometry()
+			m.interactWithUser()
+		}
+	})
+}
+
+func (m *MainWindow) interactWithUser() {
+	m.lastGeometry()
+	m.app.ConnectAboutToQuit(m.recordGeometry)
+	m.gistService.Username = m.settings.Username
+	m.gistService.Token = m.settings.Token
+	go m.populate()
 }
 
 func (m *MainWindow) setupUI() {
@@ -157,6 +187,9 @@ func (m *MainWindow) setupUI() {
 	m.menubar.ConnectQuit(func() {
 		m.app.Quit()
 	})
+	m.menubar.ConnectOpenSettings(func(bool) {
+		m.showSettings()
+	})
 
 	m.sysTray.ConnectActivated(m.sysTrayClick)
 	m.clipboard = func() clipboard {
@@ -171,6 +204,7 @@ func (m *MainWindow) setupUI() {
 	})
 	m.searchbox.ConnectOpenGist(m.openGistByID)
 	m.menubar.ConnectNewGist(m.newGist)
+	m.gistService = gist.Service{}
 }
 
 // GistList returns the associated gistList.
@@ -185,30 +219,19 @@ func (m *MainWindow) SetGistService(g gist.Service) { m.gistService = g }
 // SetApp sets the app instance.
 func (m *MainWindow) SetApp(app *widgets.QApplication) { m.app = app }
 
-func (m *MainWindow) loadSettings() {
+func (m *MainWindow) lastGeometry() {
 	tmp := widgets.NewQWidget(nil, 0)
 	tmp.SetGeometry2(100, 100, 600, 600)
 	defSize := tmp.SaveGeometry()
 	sizeVar := m.settings.Value(mainWindowGeometry, core.NewQVariant15(defSize))
 	m.RestoreGeometry(sizeVar.ToByteArray())
-	m.app.ConnectAboutToQuit(m.saveSettings)
 }
 
-func (m *MainWindow) saveSettings() {
+func (m *MainWindow) recordGeometry() {
 	current := m.SaveGeometry()
 	currentVar := core.NewQVariant15(current.QByteArray_PTR())
 	m.settings.SetValue(mainWindowGeometry, currentVar)
 	m.settings.Sync()
-}
-
-func getSettings(name string) *core.QSettings {
-	return core.NewQSettings3(
-		core.QSettings__NativeFormat,
-		core.QSettings__UserScope,
-		"gisty",
-		name,
-		nil,
-	)
 }
 
 func (m *MainWindow) populate() {
@@ -219,6 +242,7 @@ func (m *MainWindow) populate() {
 	if m.gistService.CacheDir == "" {
 		m.gistService.CacheDir = m.cacheDir()
 	}
+
 	for item := range m.gistService.Iter() {
 		foundOne = true
 		m.searchbox.Add(item)

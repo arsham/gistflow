@@ -17,6 +17,7 @@ type MenuBar struct {
 	_ func(bool) `signal:"newGist"`
 	_ func(bool) `signal:"copyURLToClipboard"`
 	_ func(bool) `signal:"openInBrowser"`
+	_ func(bool) `signal:"openSettings"`
 
 	options *widgets.QMenu
 	window  *widgets.QMenu
@@ -61,6 +62,8 @@ func (m *MenuBar) init() {
 	})
 	m.actions.InBrowser.ConnectTriggered(m.OpenInBrowser)
 	m.actions.NewGist.ConnectTriggered(m.NewGist)
+
+	m.actions.Settings.ConnectTriggered(m.OpenSettings)
 }
 
 // Actions returns all actions assigned to this MenuBar.
