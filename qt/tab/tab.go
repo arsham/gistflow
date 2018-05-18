@@ -170,11 +170,6 @@ func (t *Tab) NewGist(tabWidget *widgets.QTabWidget, label string) {
 	})
 }
 
-// URL returns the main gist's URL.
-func (t Tab) URL() string {
-	return t.gist.URL
-}
-
 // HTMLURL returns the URL to the html page of the gist.
 func (t Tab) HTMLURL() string {
 	return t.gist.HTMLURL

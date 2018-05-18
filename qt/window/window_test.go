@@ -224,7 +224,6 @@ func testLoadingGeometry(t *testing.T) {
 func TestViewGist(t *testing.T) { tRunner.Run(func() { testViewGist(t) }) }
 func testViewGist(t *testing.T) {
 	var (
-		called   bool
 		id       = "uWIkJYdkFuVwYcyy"
 		badID    = "kJuZxkDCBp"
 		fileName = "LpqrRCgBBYY"
@@ -238,7 +237,6 @@ func testViewGist(t *testing.T) {
 		Files: files,
 	}
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
 		if !strings.Contains(r.URL.Path, id) {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -610,10 +608,9 @@ func testClickOpenGist(t *testing.T) {
 	app.SetActiveWindow(window)
 	window.Show()
 
-	var errCalled bool
 	window.logger = &logger{
-		errorFunc:   func(str string) { errCalled = true },
-		warningFunc: func(str string) { errCalled = true },
+		errorFunc:   func(str string) {},
+		warningFunc: func(str string) {},
 	}
 
 	for _, key := range []core.Qt__Key{core.Qt__Key_Enter, core.Qt__Key_Return} {
