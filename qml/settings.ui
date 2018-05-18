@@ -59,7 +59,7 @@
       <item row="2" column="0" colspan="2">
        <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Click here to create a new access token. This will take you to a take where you can generate a new token. Copy the token and leave it in the box above.</string>
+         <string>Click &lt;a href='https://github.com/settings/tokens'&gt;here&lt;/a&gt; to create a new access token. This will take you to a take where you can generate a new token. Copy the token and leave it in the box above.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

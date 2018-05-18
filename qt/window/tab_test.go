@@ -44,21 +44,21 @@ func testTabCreation(t *testing.T) {
 	}
 	defer cleanup()
 
-	initialCount := window.TabsWidget().Count()
-	tab := tab.NewTab(window.TabsWidget())
+	initialCount := window.tabsWidget.Count()
+	tab := tab.NewTab(window.tabsWidget)
 	if tab == nil {
-		t.Error("NewTab(window.TabsWidget()) = nil, want *Tab")
+		t.Error("NewTab(window.tabsWidget) = nil, want *Tab")
 		return
 	}
 
-	tab.ShowGist(window.TabsWidget(), g)
-	if window.TabsWidget().Count() != initialCount+1 {
-		t.Errorf("window.TabsWidget().Count() = %d, want %d", window.TabsWidget().Count(), initialCount+1)
+	tab.ShowGist(window.tabsWidget, g)
+	if window.tabsWidget.Count() != initialCount+1 {
+		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), initialCount+1)
 		return
 	}
 
-	index := window.TabsWidget().CurrentIndex()
-	shownTab := window.TabsWidget().Widget(index)
+	index := window.tabsWidget.CurrentIndex()
+	shownTab := window.tabsWidget.Widget(index)
 	if shownTab.Pointer() != tab.Pointer() {
 		t.Errorf("shownTab.Pointer() = %v, want %v", shownTab.Pointer(), tab.Pointer())
 	}
@@ -76,8 +76,8 @@ func testTabCreation(t *testing.T) {
 	if file.Content().ToPlainText() != content {
 		t.Errorf("content = %s, want %s", file.Content().ToPlainText(), content)
 	}
-	if window.TabsWidget().TabText(index) != label {
-		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), label)
+	if window.tabsWidget.TabText(index) != label {
+		t.Errorf("TabText(%d) = %s, want %s", index, window.tabsWidget.TabText(index), label)
 	}
 }
 
@@ -111,7 +111,7 @@ func testTabIDFromIndex(t *testing.T) {
 	defer cleanup()
 
 	window.gistService.API = gistTs.URL
-	currentIndex := window.TabsWidget().CurrentIndex()
+	currentIndex := window.tabsWidget.CurrentIndex()
 	window.openGist(id1)
 	index1 := currentIndex + 1
 	window.openGist(id2)
@@ -139,10 +139,10 @@ type keyReleaseEventWidget interface {
 func TestSwitchTabs(t *testing.T) { tRunner.Run(func() { testSwitchTabs(t) }) }
 func testSwitchTabs(t *testing.T) {
 	testSwitchTabsOnWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
-		return window.TabsWidget()
+		return window.tabsWidget
 	})
 	testSwitchTabsOnWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
-		return window.GistList()
+		return window.gistList
 	})
 }
 
@@ -159,40 +159,40 @@ func testSwitchTabsOnWidget(t *testing.T, name string, f func(*MainWindow) keyRe
 	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
 	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
 
-	leftTab := tab.NewTab(window.TabsWidget())
-	leftTab.ShowGist(window.TabsWidget(), g1)
-	rightTab := tab.NewTab(window.TabsWidget())
-	rightTab.ShowGist(window.TabsWidget(), g2)
+	leftTab := tab.NewTab(window.tabsWidget)
+	leftTab.ShowGist(window.tabsWidget, g1)
+	rightTab := tab.NewTab(window.tabsWidget)
+	rightTab.ShowGist(window.tabsWidget, g2)
 
-	leftIndex := window.TabsWidget().IndexOf(leftTab)
-	rightIndex := window.TabsWidget().IndexOf(rightTab)
+	leftIndex := window.tabsWidget.IndexOf(leftTab)
+	rightIndex := window.tabsWidget.IndexOf(rightTab)
 	if leftIndex > rightIndex {
 		rightIndex = leftIndex
 	}
-	window.TabsWidget().SetCurrentIndex(rightIndex)
+	window.tabsWidget.SetCurrentIndex(rightIndex)
 
 	event := testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_PageUp, core.Qt__ControlModifier, -1)
 	event.Simulate(w)
-	if window.TabsWidget().CurrentIndex() != leftIndex {
-		t.Errorf("%s: window.TabsWidget().CurrentIndex() = %d, want %d", name, window.TabsWidget().CurrentIndex(), leftIndex)
+	if window.tabsWidget.CurrentIndex() != leftIndex {
+		t.Errorf("%s: window.tabsWidget.CurrentIndex() = %d, want %d", name, window.tabsWidget.CurrentIndex(), leftIndex)
 	}
 
 	event = testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_PageDown, core.Qt__ControlModifier, -1)
 	event.Simulate(w)
-	if window.TabsWidget().CurrentIndex() != rightIndex {
-		t.Errorf("%s: window.TabsWidget().CurrentIndex() = %d, want %d", name, window.TabsWidget().CurrentIndex(), rightIndex)
+	if window.tabsWidget.CurrentIndex() != rightIndex {
+		t.Errorf("%s: window.tabsWidget.CurrentIndex() = %d, want %d", name, window.tabsWidget.CurrentIndex(), rightIndex)
 	}
 }
 
 func TestMovingTabs(t *testing.T) { tRunner.Run(func() { testMovingTabs(t) }) }
 func testMovingTabs(t *testing.T) {
 	testMovingTabsOnTabWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
-		return window.TabsWidget()
+		return window.tabsWidget
 	})
 	testMovingTabsOnTabWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
-		return window.GistList()
+		return window.gistList
 	})
 }
 
@@ -209,27 +209,27 @@ func testMovingTabsOnTabWidget(t *testing.T, name string, f func(*MainWindow) ke
 	g1 := getGist("uWIkJYdkFuVwYcyy", "LpqrRCgBBYY", "fLGLysiOuxReut\nASUonvyd")
 	g2 := getGist("FJsPzPqhI", "bsDmGRE", "KuiIIVYnCKycPPkXLibh")
 
-	leftTab := tab.NewTab(window.TabsWidget())
-	leftTab.ShowGist(window.TabsWidget(), g1)
-	rightTab := tab.NewTab(window.TabsWidget())
-	rightTab.ShowGist(window.TabsWidget(), g2)
+	leftTab := tab.NewTab(window.tabsWidget)
+	leftTab.ShowGist(window.tabsWidget, g1)
+	rightTab := tab.NewTab(window.tabsWidget)
+	rightTab.ShowGist(window.tabsWidget, g2)
 
-	leftIndex := window.TabsWidget().IndexOf(leftTab)
-	rightIndex := window.TabsWidget().IndexOf(rightTab)
+	leftIndex := window.tabsWidget.IndexOf(leftTab)
+	rightIndex := window.tabsWidget.IndexOf(rightTab)
 	if leftIndex > rightIndex {
 		// I just want to position them properly.
 		leftIndex, rightIndex = rightIndex, leftIndex
 		leftTab, rightTab = rightTab, leftTab
 	}
-	window.TabsWidget().SetCurrentIndex(rightIndex)
+	window.tabsWidget.SetCurrentIndex(rightIndex)
 
 	event := testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_PageUp, core.Qt__ControlModifier+core.Qt__ShiftModifier, -1)
 	event.Simulate(w)
-	if window.TabsWidget().IndexOf(rightTab) != leftIndex {
-		t.Errorf("%s: window.TabsWidget().IndexOf(rightTab) = %d, want %d", name, window.TabsWidget().IndexOf(rightTab), leftIndex)
+	if window.tabsWidget.IndexOf(rightTab) != leftIndex {
+		t.Errorf("%s: window.tabsWidget.IndexOf(rightTab) = %d, want %d", name, window.tabsWidget.IndexOf(rightTab), leftIndex)
 	}
-	if window.TabsWidget().CurrentWidget().Pointer() != rightTab.Pointer() {
+	if window.tabsWidget.CurrentWidget().Pointer() != rightTab.Pointer() {
 		t.Errorf("%s: focus is still on leftTab, want rightTab", name)
 	}
 
@@ -237,10 +237,10 @@ func testMovingTabsOnTabWidget(t *testing.T, name string, f func(*MainWindow) ke
 	event = testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_PageDown, core.Qt__ControlModifier+core.Qt__ShiftModifier, -1)
 	event.Simulate(w)
-	if window.TabsWidget().IndexOf(rightTab) != rightIndex {
-		t.Errorf("%s: window.TabsWidget().IndexOf(rightTab) = %d, want %d", name, window.TabsWidget().IndexOf(rightTab), rightIndex)
+	if window.tabsWidget.IndexOf(rightTab) != rightIndex {
+		t.Errorf("%s: window.tabsWidget.IndexOf(rightTab) = %d, want %d", name, window.tabsWidget.IndexOf(rightTab), rightIndex)
 	}
-	if window.TabsWidget().CurrentWidget().Pointer() != rightTab.Pointer() {
+	if window.tabsWidget.CurrentWidget().Pointer() != rightTab.Pointer() {
 		t.Errorf("%s: focus is still on leftTab, want rightTab", name)
 	}
 }
@@ -286,7 +286,7 @@ func testRemoveOpenTab(t *testing.T) {
 	if _, ok := window.tabGistList[id1]; !ok {
 		t.Errorf("%s not found in window.tabGistList", id1)
 	}
-	window.TabsWidget().TabCloseRequested(window.TabsWidget().CurrentIndex())
+	window.tabsWidget.TabCloseRequested(window.tabsWidget.CurrentIndex())
 	if len(window.tabGistList) != currentLen {
 		t.Errorf("len(window.tabGistList) = %d, want %d", len(window.tabGistList), currentLen)
 	}
@@ -305,9 +305,9 @@ func testRemoveOpenTab(t *testing.T) {
 		t.Errorf("%s not found in window.tabGistList", id1)
 	}
 
-	index := window.TabsWidget().IndexOf(window.tabGistList[id1])
-	if window.TabsWidget().CurrentIndex() != index {
-		t.Errorf("window.TabsWidget().CurrentIndex() = %d, want %d", window.TabsWidget().CurrentIndex(), index)
+	index := window.tabsWidget.IndexOf(window.tabGistList[id1])
+	if window.tabsWidget.CurrentIndex() != index {
+		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want %d", window.tabsWidget.CurrentIndex(), index)
 	}
 }
 
@@ -325,16 +325,16 @@ func testWindowClickCloseTab(t *testing.T) {
 	app.SetActiveWindow(window)
 	window.Show()
 
-	tab := tab.NewTab(window.TabsWidget())
+	tab := tab.NewTab(window.tabsWidget)
 	if tab == nil {
-		t.Error("NewTab(window.TabsWidget()) = nil, want *Tab")
+		t.Error("NewTab(window.tabsWidget) = nil, want *Tab")
 		return
 	}
 
-	tab.ShowGist(window.TabsWidget(), g)
-	currentSize := window.TabsWidget().Count()
-	index := window.TabsWidget().IndexOf(tab)
-	window.TabsWidget().ConnectTabCloseRequested(func(i int) {
+	tab.ShowGist(window.tabsWidget, g)
+	currentSize := window.tabsWidget.Count()
+	index := window.tabsWidget.IndexOf(tab)
+	window.tabsWidget.ConnectTabCloseRequested(func(i int) {
 		if i == index {
 			called = true
 			return
@@ -342,16 +342,16 @@ func testWindowClickCloseTab(t *testing.T) {
 		t.Errorf("i = %d, want %d", i, index)
 	})
 
-	window.TabsWidget().TabCloseRequested(index)
+	window.tabsWidget.TabCloseRequested(index)
 
 	if !called {
 		t.Errorf("%s: didn't close the tab", appName)
 	}
-	if window.TabsWidget().Count() != currentSize-1 {
-		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", appName, window.TabsWidget().Count(), currentSize-1)
+	if window.tabsWidget.Count() != currentSize-1 {
+		t.Errorf("%s: window.tabsWidget.Count() = %d, want %d", appName, window.tabsWidget.Count(), currentSize-1)
 	}
-	if window.TabsWidget().IndexOf(tab) != -1 {
-		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", appName, window.TabsWidget().IndexOf(tab), -1)
+	if window.tabsWidget.IndexOf(tab) != -1 {
+		t.Errorf("%s: window.tabsWidget.IndexOf(tab) = %d, want %d", appName, window.tabsWidget.IndexOf(tab), -1)
 	}
 
 	if _, ok := window.tabGistList[g.ID]; ok {
@@ -362,10 +362,10 @@ func testWindowClickCloseTab(t *testing.T) {
 func TestShortcutTabClose(t *testing.T) { tRunner.Run(func() { testShortcutTabClose(t) }) }
 func testShortcutTabClose(t *testing.T) {
 	testShortcutTabCloseWidget(t, "TabsWidget", func(window *MainWindow) keyReleaseEventWidget {
-		return window.TabsWidget()
+		return window.tabsWidget
 	})
 	testShortcutTabCloseWidget(t, "GistList", func(window *MainWindow) keyReleaseEventWidget {
-		return window.GistList()
+		return window.gistList
 	})
 }
 
@@ -382,15 +382,15 @@ func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) k
 	w := f(window)
 	g := getGist("TGtyIHIK", "hPtRE", "quIwMlPsoVaNr")
 
-	tab := tab.NewTab(window.TabsWidget())
-	tab.ShowGist(window.TabsWidget(), g)
-	index := window.TabsWidget().IndexOf(tab)
-	currentSize := window.TabsWidget().Count()
+	tab := tab.NewTab(window.tabsWidget)
+	tab.ShowGist(window.tabsWidget, g)
+	index := window.tabsWidget.IndexOf(tab)
+	currentSize := window.tabsWidget.Count()
 
-	window.TabsWidget().SetCurrentWidget(tab)
+	window.tabsWidget.SetCurrentWidget(tab)
 	w.SetFocus2()
 
-	window.TabsWidget().ConnectTabCloseRequested(func(i int) {
+	window.tabsWidget.ConnectTabCloseRequested(func(i int) {
 		if i == index {
 			called = true
 			return
@@ -405,11 +405,11 @@ func testShortcutTabCloseWidget(t *testing.T, name string, f func(*MainWindow) k
 	if !called {
 		t.Errorf("%s: didn't close the tab", name)
 	}
-	if window.TabsWidget().Count() != currentSize-1 {
-		t.Errorf("%s: window.TabsWidget().Count() = %d, want %d", name, window.TabsWidget().Count(), currentSize-1)
+	if window.tabsWidget.Count() != currentSize-1 {
+		t.Errorf("%s: window.tabsWidget.Count() = %d, want %d", name, window.tabsWidget.Count(), currentSize-1)
 	}
-	if window.TabsWidget().IndexOf(tab) != -1 {
-		t.Errorf("%s: window.TabsWidget().IndexOf(tab) = %d, want %d", name, window.TabsWidget().IndexOf(tab), -1)
+	if window.tabsWidget.IndexOf(tab) != -1 {
+		t.Errorf("%s: window.tabsWidget.IndexOf(tab) = %d, want %d", name, window.tabsWidget.IndexOf(tab), -1)
 	}
 
 	if _, ok := window.tabGistList[g.ID]; ok {
@@ -440,9 +440,9 @@ func testMultipleFileGist(t *testing.T) {
 	}
 	defer cleanup()
 
-	tab := tab.NewTab(window.TabsWidget())
-	tab.ShowGist(window.TabsWidget(), g)
-	index := window.TabsWidget().CurrentIndex()
+	tab := tab.NewTab(window.tabsWidget)
+	tab.ShowGist(window.tabsWidget, g)
+	index := window.tabsWidget.CurrentIndex()
 
 	if tab.Files() == nil {
 		t.Error("tab.Files() = nil")
@@ -457,8 +457,8 @@ func testMultipleFileGist(t *testing.T) {
 	if file1.Content().ToPlainText() != content1 {
 		t.Errorf("content1 = %s, want %s", file1.Content().ToPlainText(), content1)
 	}
-	if window.TabsWidget().TabText(index) != label1 {
-		t.Errorf("TabText(%d) = %s, want %s", index, window.TabsWidget().TabText(index), label1)
+	if window.tabsWidget.TabText(index) != label1 {
+		t.Errorf("TabText(%d) = %s, want %s", index, window.tabsWidget.TabText(index), label1)
 	}
 	file2 := tab.Files()[1]
 	if file2.Content().ToPlainText() != content2 {

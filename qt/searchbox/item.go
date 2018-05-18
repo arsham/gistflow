@@ -8,21 +8,21 @@ import (
 	"github.com/therecipe/qt/core"
 )
 
-// ListModel is used in SearchBox's Results.
-type ListModel struct {
+// listModel is used in SearchBox's Results.
+type listModel struct {
 	core.QAbstractListModel
 
 	_ func()          `constructor:"init"`
-	_ func(*ListItem) `slot:"addGist"`
+	_ func(*listItem) `slot:"addGist"`
 
 	_ map[int]*core.QByteArray `property:"roles"`
-	_ []*ListItem              `property:"gists"`
+	_ []*listItem              `property:"gists"`
 }
 
-// ListItem is one row in the QListView. This is a different gist than
+// listItem is one row in the QListView. This is a different gist than
 // gist.Gist, this one does not have enough information as it was received by
 // asking for user's gist list.
-type ListItem struct {
+type listItem struct {
 	core.QObject
 
 	GistID      string
@@ -30,35 +30,31 @@ type ListItem struct {
 	Description string
 }
 
-func init() {
-	ListItem_QRegisterMetaType()
-}
-
-func (m *ListModel) init() {
-	m.SetRoles(map[int]*core.QByteArray{
+func (l *listModel) init() {
+	l.SetRoles(map[int]*core.QByteArray{
 		gistID:      core.NewQByteArray2("GistID", len("GistID")),
 		gistURL:     core.NewQByteArray2("GistURL", len("GistURL")),
 		description: core.NewQByteArray2("Description", len("Description")),
 	})
 
-	m.ConnectData(m.data)
-	m.ConnectRowCount(m.rowCount)
-	m.ConnectColumnCount(m.columnCount)
-	m.ConnectRoleNames(m.roleNames)
+	l.ConnectData(l.data)
+	l.ConnectRowCount(l.rowCount)
+	l.ConnectColumnCount(l.columnCount)
+	l.ConnectRoleNames(l.roleNames)
 
-	m.ConnectAddGist(m.addGist)
+	l.ConnectAddGist(l.addGist)
 }
 
-func (m *ListModel) data(index *core.QModelIndex, role int) *core.QVariant {
+func (l *listModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	if !index.IsValid() {
 		return core.NewQVariant()
 	}
 
-	if index.Row() >= len(m.Gists()) {
+	if index.Row() >= len(l.Gists()) {
 		return core.NewQVariant()
 	}
 
-	var p = m.Gists()[index.Row()]
+	var p = l.Gists()[index.Row()]
 	switch role {
 	case gistID:
 		return core.NewQVariant14(p.GistID)
@@ -74,32 +70,40 @@ func (m *ListModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	}
 }
 
-func (m *ListModel) rowCount(parent *core.QModelIndex) int {
-	return len(m.Gists())
+func (l *listModel) rowCount(parent *core.QModelIndex) int {
+	return len(l.Gists())
 }
 
-func (m *ListModel) columnCount(parent *core.QModelIndex) int {
+func (l *listModel) columnCount(parent *core.QModelIndex) int {
 	return 1
 }
 
-func (m *ListModel) roleNames() map[int]*core.QByteArray {
-	return m.Roles()
+func (l *listModel) roleNames() map[int]*core.QByteArray {
+	return l.Roles()
 }
 
-func (m *ListModel) addGist(p *ListItem) {
-	m.BeginInsertRows(core.NewQModelIndex(), len(m.Gists()), len(m.Gists()))
-	m.SetGists(append(m.Gists(), p))
-	m.EndInsertRows()
+func (l *listModel) addGist(p *listItem) {
+	l.BeginInsertRows(core.NewQModelIndex(), len(l.Gists()), len(l.Gists()))
+	l.SetGists(append(l.Gists(), p))
+	l.EndInsertRows()
 }
 
-// Remove removes the gist identified by gistID from the list.
-func (m *ListModel) Remove(gistID string) {
-	for row, p := range m.Gists() {
+// remove removes the gist identified by gistID from the list.
+func (l *listModel) remove(gistID string) {
+	for row, p := range l.Gists() {
 		if p.GistID == gistID {
-			m.BeginRemoveRows(core.NewQModelIndex(), row, row)
-			m.SetGists(append(m.Gists()[:row], m.Gists()[row+1:]...))
-			m.EndRemoveRows()
+			l.BeginRemoveRows(core.NewQModelIndex(), row, row)
+			l.SetGists(append(l.Gists()[:row], l.Gists()[row+1:]...))
+			l.EndRemoveRows()
 			return
 		}
 	}
+}
+
+func (l *listModel) clear() {
+	l.BeginResetModel()
+	l.ResetInternalData()
+	g := make([]*listItem, 0)
+	l.SetGists(g)
+	l.EndResetModel()
 }

@@ -5,6 +5,8 @@
 package searchbox
 
 import (
+	"strings"
+
 	"github.com/arsham/gistflow/gist"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -18,7 +20,7 @@ const (
 	dialogWidth = 500
 )
 
-// Dialog is shown when user hists Ctrl+P.
+// Dialog is shown when user hits Ctrl+P.
 type Dialog struct {
 	widgets.QDialog
 
@@ -29,7 +31,7 @@ type Dialog struct {
 
 	input   *widgets.QLineEdit
 	results *widgets.QListView
-	model   *ListModel
+	model   *listModel
 	proxy   *core.QSortFilterProxyModel
 }
 
@@ -66,7 +68,9 @@ func (d *Dialog) init() {
 	d.results.SetModel(d.proxy)
 
 	d.input.ConnectTextChanged(func(text string) {
+		text = strings.Join(strings.Split(text, ""), "*")
 		d.proxy.SetFilterWildcard(text)
+		d.proxy.SetFilterCaseSensitivity(core.Qt__CaseInsensitive)
 		d.selectFirstRow()
 	})
 
@@ -139,5 +143,10 @@ func (d *Dialog) HasID(gistID string) bool {
 
 // Remove removes the gist identified by gistID from the model.
 func (d *Dialog) Remove(gistID string) {
-	d.model.Remove(gistID)
+	d.model.remove(gistID)
+}
+
+// Clear removes all data from model.
+func (d *Dialog) Clear() {
+	d.model.clear()
 }

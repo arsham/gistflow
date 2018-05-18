@@ -26,7 +26,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-// testing vanilla setup
+// testing vanilla setup.
 func TestWindowStartupWidgets(t *testing.T) { tRunner.Run(func() { testWindowStartupWidgets(t) }) }
 func testWindowStartupWidgets(t *testing.T) {
 	_, window, cleanup, err := setup(t, appName, nil, 0)
@@ -35,29 +35,49 @@ func testWindowStartupWidgets(t *testing.T) {
 		return
 	}
 	defer cleanup()
-	oldLogger := window.logger
-	window.logger = nil
-	window.setupUI()
 	window.clipboard = func() clipboard {
 		return &fakeClipboard{textFunc: func(text string, mode gui.QClipboard__Mode) {}}
 	}
 
+	oldLogger := window.logger
+	window.logger = nil
+	window.setupUI()
 	if window.logger == nil {
 		t.Error("window.logger = nil, want boxLogger")
 	}
 	window.logger = oldLogger
 
-	if window == nil {
-		t.Error("window = nil, want *widgets.QMainWindow")
+	if window.tabsWidget == nil {
+		t.Error("window.tabsWidget = nil, want *widgets.QTabWidget")
 		return
 	}
-	if window.icon == nil {
-		t.Error("window.icon = nil, want *gui.QIcon")
-		return
+	if !window.tabsWidget.IsMovable() {
+		t.Error("window.tabsWidget is not movable")
 	}
 	if window.menubar == nil {
 		t.Error("window.menubar = nil, want *widgets.QMenuBar")
 		return
+	}
+	if window.statusArea == nil {
+		t.Error("window.statusArea = nil, want *widgets.QStatusBar")
+	}
+	if window.StatusBar().Pointer() != window.statusArea.Pointer() {
+		t.Errorf("window.StatusBar().Pointer() = %v, want %v", window.StatusBar().Pointer(), window.statusArea.Pointer())
+	}
+	if window.dockWidget == nil {
+		t.Error("window.dockWidget = nil, want *widgets.QDockWidget")
+	}
+	if window.tabGistList == nil {
+		t.Error("window.tabGistList = nil, want []*tabGist")
+	}
+	if window.gistList == nil {
+		t.Error("window.gistList = nil, want *gistlist.Container")
+	}
+	if window.toolBar == nil {
+		t.Error("window.toolBar = nil, want *toolbar.Toolbar")
+	}
+	if window.icon == nil {
+		t.Error("window.icon = nil, want *gui.QIcon")
 	}
 	if window.sysTray == nil {
 		t.Error("window.sysTray = nil, want *widgets.QSystemTrayIcon")
@@ -66,44 +86,27 @@ func testWindowStartupWidgets(t *testing.T) {
 	if window.sysTray.Icon() == nil {
 		t.Error("window.sysTray.Icon() = nil, want *gui.QIcon")
 	}
+	if window.sysTray.Icon().Name() != window.icon.Name() {
+		t.Errorf("window.sysTray.Icon().Name() = %v, want %v", window.sysTray.Icon().Name(), window.icon.Name())
+	}
 	if window.sysTray.ContextMenu().Pointer() != window.menubar.Options().Pointer() {
 		t.Errorf("window.sysTray.ContextMenu().Pointer() = %v, want %v",
 			window.sysTray.ContextMenu().Pointer(),
 			window.menubar.Options().Pointer(),
 		)
 	}
-
-	if window.statusArea == nil {
-		t.Error("window.statusArea = nil, want *widgets.QStatusBar")
-		return
-	}
-	if window.tabsWidget == nil {
-		t.Error("window.tabsWidget = nil, want *widgets.QTabWidget")
-		return
-	}
-	if !window.tabsWidget.IsMovable() {
-		t.Error("window.tabsWidget is not movable")
-	}
-	if window.tabGistList == nil {
-		t.Error("window.tabGistList = nil, want []*tabGist")
-		return
-	}
-	if window.gistList == nil {
-		t.Error("window.gistList = nil, want *widgets.QListView")
-		return
-	}
-	if window.dockWidget == nil {
-		t.Error("window.dockWidget = nil, want *widgets.QDockWidget")
-		return
-	}
 	if window.clipboard() == nil {
 		t.Error("window.clipboard() = nil, want *gui.QClipboard")
+	}
+	if window.searchbox == nil {
+		t.Error("window.searchbox = nil, want *searchbox.Dialog")
+	}
+	if window.gistService.Logger == nil {
+		t.Error("window.gistService.Logger is not assigned")
 		return
 	}
-
-	if window.gistList == nil {
-		t.Error("window.gistList = nil, want *gistlist.Container")
-		return
+	if window.gistService.CacheDir == "" {
+		t.Error("gistService.CacheDir wasn't initialised")
 	}
 }
 
@@ -122,14 +125,8 @@ func testPopulateError(t *testing.T) {
 		errorFunc: func(str string) {
 			close(called)
 		},
-		warningFunc: func(str string) {},
 	}
-	window.gistService.CacheDir = ""
 	window.populate()
-	if window.gistService.Logger == nil {
-		t.Error("window.gistService.Logger is not assigned")
-		return
-	}
 	model := window.searchbox.Model()
 	index := core.NewQModelIndex()
 	if c := model.RowCount(index); c != 0 {
@@ -139,10 +136,6 @@ func testPopulateError(t *testing.T) {
 	case <-called:
 	case <-time.After(2 * time.Second):
 		t.Error("expected an error, didn't register the error")
-	}
-
-	if window.gistService.CacheDir == "" {
-		t.Error("window.gistService.CacheDir is empty")
 	}
 }
 
@@ -272,11 +265,9 @@ func testViewGist(t *testing.T) {
 		t.Errorf("window.tabsWidget.Count() = %d, want 0", window.tabsWidget.Count())
 		return
 	}
-
 	if err := window.openGist(badID); err == nil {
 		t.Errorf("window.openGist(%s) = nil, want error", badID)
 	}
-
 	if err := window.openGist(id); err != nil {
 		t.Errorf("window.openGist(%s) = %s, want nil", id, err)
 	}
@@ -309,7 +300,10 @@ func testViewGist(t *testing.T) {
 
 func TestClickViewGist(t *testing.T) { tRunner.Run(func() { testClickViewGist(t) }) }
 func testClickViewGist(t *testing.T) {
-	var called bool
+	var (
+		called    bool
+		errCalled bool
+	)
 	gres := gist.Gist{
 		ID:          "QXhJNchXAK",
 		Description: "kfxLTwoCOkqEuPlp",
@@ -340,10 +334,8 @@ func testClickViewGist(t *testing.T) {
 
 	window.populate()
 	window.gistService.API = gistTs.URL
-
 	app.SetActiveWindow(window)
 
-	var errCalled bool
 	window.logger = &logger{
 		errorFunc:   func(str string) { errCalled = true },
 		warningFunc: func(str string) { errCalled = true },
@@ -374,10 +366,6 @@ func testClickViewGist(t *testing.T) {
 		os.RemoveAll(window.gistService.CacheDir)
 		os.Mkdir(window.gistService.CacheDir, 0777)
 	}
-
-	if !called {
-		return
-	}
 }
 
 func TestOpeningGistTwice(t *testing.T) { tRunner.Run(func() { testOpeningGistTwice(t) }) }
@@ -393,7 +381,6 @@ func testOpeningGistTwice(t *testing.T) {
 	gres := gist.Gist{
 		Files: files,
 	}
-
 	gistTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, err := json.Marshal(gres)
 		if err != nil {
@@ -410,7 +397,6 @@ func testOpeningGistTwice(t *testing.T) {
 		return
 	}
 	defer cleanup()
-
 	window.gistService.API = gistTs.URL
 
 	startingSize := window.tabsWidget.Count()
@@ -422,8 +408,8 @@ func testOpeningGistTwice(t *testing.T) {
 	if window.tabsWidget.CurrentIndex() != startingIndex+1 {
 		t.Errorf("window.tabsWidget.CurrentIndex() = %d, want %d", window.tabsWidget.CurrentIndex(), startingIndex+1)
 	}
-	id1Index := window.tabsWidget.CurrentIndex()
 
+	id1Index := window.tabsWidget.CurrentIndex()
 	window.openGist(id2)
 	if window.tabsWidget.Count() != startingSize+2 {
 		t.Errorf("window.tabsWidget.Count() = %d, want %d", window.tabsWidget.Count(), startingSize+2)
@@ -449,7 +435,6 @@ func testToggle(t *testing.T) {
 
 	app.SetActiveWindow(window)
 	window.Show()
-
 	if window.IsHidden() {
 		t.Error("window is not shown")
 	}
@@ -506,7 +491,6 @@ func testCopyURL(t *testing.T) {
 		}
 	}
 	api = gistTs.URL
-
 	c := window.menubar.Actions().CopyURL
 	if err := window.openGist(id1); err != nil {
 		t.Errorf("window.openGist(%s) = %v, want nil", id1, err)
@@ -515,8 +499,8 @@ func testCopyURL(t *testing.T) {
 	if err := window.openGist(id2); err != nil {
 		t.Errorf("window.openGist(%s) = %v, want nil", id2, err)
 	}
-	url2 := url
 
+	url2 := url
 	tab1, tab2 := window.tabGistList[id1], window.tabGistList[id2]
 	window.tabsWidget.SetCurrentWidget(tab1)
 
@@ -538,7 +522,6 @@ func testEmptyDescription(t *testing.T) {
 		content  = "CNF5EmQJxiGvzwedbmTME3p0Y"
 		fileName = "84nkJJG0"
 	)
-
 	gres := gist.Gist{
 		ID: "QXhJNchXAK",
 		Files: map[string]gist.File{
@@ -552,7 +535,6 @@ func testEmptyDescription(t *testing.T) {
 	}
 	defer cleanup()
 	window.populate()
-
 	model := window.gistList.Model()
 	item := model.Index(0, 0, core.NewQModelIndex())
 	desc := item.Data(int(core.Qt__DisplayRole)).ToString()
@@ -572,10 +554,8 @@ func testOpenSearchBox(t *testing.T) {
 
 	app.SetActiveWindow(window)
 	window.Show()
-
 	event := testlib.NewQTestEventList()
 	event.AddKeyPress(core.Qt__Key_P, core.Qt__ControlModifier, -1)
-
 	tcs := []struct {
 		name   string
 		widget widgets.QWidget_ITF
@@ -658,10 +638,6 @@ func testClickOpenGist(t *testing.T) {
 		delete(window.tabGistList, gres.ID)
 		os.RemoveAll(window.gistService.CacheDir)
 		os.Mkdir(window.gistService.CacheDir, 0777)
-	}
-
-	if !called {
-		return
 	}
 }
 
@@ -804,7 +780,6 @@ func testNewGist(t *testing.T) {
 
 	app.SetActiveWindow(window)
 	window.Show()
-
 	currentLen := len(window.tabGistList)
 	window.newGist(true)
 	if len(window.tabGistList) != currentLen+1 {
@@ -818,7 +793,6 @@ func testNewGist(t *testing.T) {
 	event.Simulate(window)
 	if len(window.tabGistList) != currentLen+1 {
 		t.Errorf("didn't open the tab: window.tabGistList = %d, want %d", len(window.tabGistList), currentLen+1)
-		return
 	}
 }
 
@@ -944,14 +918,14 @@ func testNewGistGlobalActions(t *testing.T) {
 		description  = "9JC4ExxYevl1znrd3H"
 		called       bool
 		clipboardTxt string
-		g            = gist.Gist{
-			ID:      "SdsEUebhhBSx",
-			HTMLURL: "LISKELE1UyLThL6",
-			Files: map[string]gist.File{
-				fileName: gist.File{Content: "3NhvSGH"},
-			},
-		}
 	)
+	g := gist.Gist{
+		ID:      "SdsEUebhhBSx",
+		HTMLURL: "LISKELE1UyLThL6",
+		Files: map[string]gist.File{
+			fileName: gist.File{Content: "3NhvSGH"},
+		},
+	}
 	newGistTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		b, err := json.Marshal(g)
@@ -999,8 +973,8 @@ func testNewGistGlobalActions(t *testing.T) {
 	}
 }
 
-func TestEmptyTokenAndUsername(t *testing.T) { tRunner.Run(func() { testEmptyTokenAndUsername(t) }) }
-func testEmptyTokenAndUsername(t *testing.T) {
+func TestDisplayNoTokenUsername(t *testing.T) { tRunner.Run(func() { testDisplayNoTokenUsername(t) }) }
+func testDisplayNoTokenUsername(t *testing.T) {
 	var err error
 	_, window, cleanup, err := setup(t, appName, nil, 0)
 	if err != nil {
@@ -1008,15 +982,7 @@ func testEmptyTokenAndUsername(t *testing.T) {
 		return
 	}
 	defer cleanup()
-
-	// settings, cleanup2 := testSettings(appName)
-	// defer cleanup2()
-	// settings.Remove(conf.AccessToken)
-	// settings.Remove(conf.Username)
-	// settings.Sync()
-
 	window.Display(app)
-
 	tab := window.tabsWidget.CurrentWidget()
 	w := conf.NewTabFromPointer(tab.Pointer())
 	if w.Pointer() == nil {
@@ -1024,8 +990,8 @@ func testEmptyTokenAndUsername(t *testing.T) {
 	}
 }
 
-func TestWithTokenAndUsername(t *testing.T) { tRunner.Run(func() { testWithTokenAndUsername(t) }) }
-func testWithTokenAndUsername(t *testing.T) {
+func TestDisplayTokenUsername(t *testing.T) { tRunner.Run(func() { testDisplayTokenUsername(t) }) }
+func testDisplayTokenUsername(t *testing.T) {
 	called := make(chan struct{})
 	gres := gist.Gist{
 		ID:          "WdeDv204lp",
@@ -1051,7 +1017,6 @@ func testWithTokenAndUsername(t *testing.T) {
 	settings.Sync()
 
 	window.Display(app)
-
 	select {
 	case <-called:
 	case <-time.After(time.Second):
@@ -1059,14 +1024,13 @@ func testWithTokenAndUsername(t *testing.T) {
 	}
 }
 
-func TestAfterConfiguration(t *testing.T) { tRunner.Run(func() { testAfterConfiguration(t) }) }
-func testAfterConfiguration(t *testing.T) {
+func TestDisplayAfterConfig(t *testing.T) { tRunner.Run(func() { testDisplayAfterConfig(t) }) }
+func testDisplayAfterConfig(t *testing.T) {
 	called := make(chan struct{})
 	gres := gist.Gist{
 		ID:          "WdeDv204lp",
 		Description: "HmK2lZP9w4QC",
 	}
-
 	_, window, cleanup, err := setup(t, appName, []gist.Gist{gres}, 10)
 	if err != nil {
 		t.Error(err)
@@ -1079,9 +1043,7 @@ func testAfterConfiguration(t *testing.T) {
 	defer gistTs.Close()
 
 	window.gistService.API = gistTs.URL
-
 	window.Display(app)
-
 	currentTab := window.tabsWidget.CurrentWidget()
 	tab := conf.NewTabFromPointer(currentTab.Pointer())
 	if tab.Pointer() == nil {
@@ -1099,11 +1061,19 @@ func testAfterConfiguration(t *testing.T) {
 
 	tab.UsernameInput.SetText("4xKmhkWG0WvIzPi4")
 	tab.AccessTokenInput.SetText("H3iU3XdqlUzTuE2m")
-	tab.Close()
+	index := window.tabsWidget.IndexOf(tab)
+	window.tabsWidget.TabCloseRequested(index)
 
 	select {
 	case <-called:
 	case <-time.After(time.Second):
 		t.Error("didn't call the server")
 	}
+}
+
+// test when the user changes the settings. The application should re-initialise
+// the searchbox and gistlist.
+func TestReconfigureSettings(t *testing.T) { tRunner.Run(func() { testReconfigureSettings(t) }) }
+func testReconfigureSettings(t *testing.T) {
+	t.Error("Not implemented yet")
 }

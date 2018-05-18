@@ -1,0 +1,35 @@
+QAction {
+    color: white;
+}
+
+QCheckBox::indicator {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #b4d6e8;
+}
+
+QLineEdit {
+    border: 1px solid #b4d6e8;
+    border-radius: 3px;
+    padding: 0 8px;
+    height: 30px;
+    margin: 5px;
+}
+
+QPushButton {
+    border: 1px solid #b4d6e8;
+    background-color: #e6f4f9;
+    border-radius: 3px;
+    height: 30px;
+    padding: 0 8px;
+    margin: 2px;
+}
+
+QPushButton::pressed {
+    background-color: #75d4f9;
+    border-style: inset;
+}
+
+QPushButton::hover {
+    background-color: #b6e6f9;
+}

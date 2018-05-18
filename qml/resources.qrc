@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/ui">
+        <file>gist.ui</file>
+        <file>searchbox.ui</file>
+        <file>settings.ui</file>
+        <file>tabheader.ui</file>
+    </qresource>
+</RCC>

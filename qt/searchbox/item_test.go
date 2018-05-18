@@ -34,12 +34,12 @@ func testRemove(t *testing.T) {
 		return false
 	}
 
-	l.Remove(id1)
+	l.remove(id1)
 	if isIn(id1) {
 		t.Errorf("%s was not removed", id1)
 	}
 
-	l.Remove(id2)
+	l.remove(id2)
 	if isIn(id2) {
 		t.Errorf("%s was not removed", id2)
 	}

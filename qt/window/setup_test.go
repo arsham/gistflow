@@ -21,6 +21,9 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+// We setup an app and bootstrap the test with it. You should obtain an instance
+// of the window through the setup() function and call the cleaup() function
+// after each test is finished.
 var (
 	app     *widgets.QApplication
 	appName = "windowTest"
@@ -32,6 +35,7 @@ func TestMain(m *testing.M) {
 	app.Exec()
 }
 
+// logger can be replaced by the messageBox of the MainWindow.
 type logger struct {
 	criticalFunc func(string) widgets.QMessageBox__StandardButton
 	errorFunc    func(string)
@@ -43,29 +47,37 @@ func (l logger) Error(msg string)                                        { l.err
 func (l logger) Warning(msg string)                                      { l.warningFunc(msg) }
 func (l logger) Warningf(format string, a ...interface{})                { l.Warning(fmt.Sprintf(format, a...)) }
 
+// fakeClipboard is used in order to prevent the test's clipboard usage collide
+// with normal clipboard system.
 type fakeClipboard struct {
 	textFunc func(string, gui.QClipboard__Mode)
 }
 
 func (f *fakeClipboard) SetText(text string, mode gui.QClipboard__Mode) { f.textFunc(text, mode) }
 
-func testSettings(name string) (*core.QSettings, func()) {
-	s := core.NewQSettings3(
+// testSettings creates a new QSettings and its file. The cleanup function
+// should be called to clean up the settings, otherwise there might be
+// unexpected results in other tests.
+func testSettings(name string) (s *core.QSettings, cleanup func()) {
+	s = core.NewQSettings3(
 		core.QSettings__NativeFormat,
 		core.QSettings__UserScope,
 		"gistflow",
 		name,
 		nil,
 	)
-	return s, func() {
+	cleanup = func() {
 		os.Remove(s.FileName())
 	}
+	return
 }
 
-func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest.Server, *MainWindow, func(), error) {
+// The testserver (TS) will print up to `totalAmount` of `input` when is
+// reached. After the totalAmount is exhausted, it will print `[\n]`.
+func setup(t *testing.T, name string, input []gist.Gist, totalAmount int) (ts *httptest.Server, window *MainWindow, cleanup func(), err error) {
 	var counter int
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if counter >= answers {
+	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if counter >= totalAmount {
 			w.Write([]byte("[\n]"))
 			return
 		}
@@ -90,7 +102,7 @@ func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest
 		return nil, nil, nil, err
 	}
 
-	window := NewMainWindow(nil, 0)
+	window = NewMainWindow(nil, 0)
 	window.gistService = gist.Service{
 		Username: "arsham",
 		Token:    "token",
@@ -98,18 +110,20 @@ func setup(t *testing.T, name string, input []gist.Gist, answers int) (*httptest
 		CacheDir: cacheDir,
 		Logger:   l2,
 	}
-	window.SetApp(app)
+	window.app = app
 	window.name = name
 	window.logger = l
 	window.clipboard = func() clipboard {
 		return &fakeClipboard{textFunc: func(text string, mode gui.QClipboard__Mode) {}}
 	}
 
-	return ts, window, func() {
+	cleanup = func() {
 		ts.Close()
 		window.Hide()
 		_, cleanup := testSettings(name)
 		cleanup()
 		os.RemoveAll(cacheDir)
-	}, nil
+	}
+
+	return
 }

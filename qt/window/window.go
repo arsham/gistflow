@@ -59,53 +59,6 @@ type MainWindow struct {
 	clipboard   func() clipboard
 }
 
-func init() {
-	MainWindow_QRegisterMetaType()
-}
-
-// Display shows the main window.
-func (m *MainWindow) Display(app *widgets.QApplication) error {
-	var err error
-	if m.name == "" {
-		m.name = "gistflow"
-	}
-	m.SetApp(app)
-	m.Show()
-
-	m.settings, err = conf.New(m.name)
-	if err != nil {
-		m.showSettings()
-		return nil
-	}
-
-	m.interactWithUser()
-	return nil
-}
-
-func (m *MainWindow) showSettings() {
-	m.lastGeometry()
-	m.app.ConnectAboutToQuit(m.recordGeometry)
-	t := conf.NewTab(m.tabsWidget)
-	t.SetSettings(m.settings)
-	m.tabsWidget.AddTab(t, "Settings")
-	m.tabsWidget.SetCurrentWidget(t)
-	tabIndex := m.tabsWidget.IndexOf(t)
-	m.tabsWidget.ConnectTabCloseRequested(func(index int) {
-		if index == tabIndex {
-			m.recordGeometry()
-			m.interactWithUser()
-		}
-	})
-}
-
-func (m *MainWindow) interactWithUser() {
-	m.lastGeometry()
-	m.app.ConnectAboutToQuit(m.recordGeometry)
-	m.gistService.Username = m.settings.Username
-	m.gistService.Token = m.settings.Token
-	go m.populate()
-}
-
 func (m *MainWindow) setupUI() {
 	if m.ObjectName() == "" {
 		m.SetObjectName("gistflow")
@@ -120,16 +73,14 @@ func (m *MainWindow) setupUI() {
 	centralWidget := widgets.NewQWidget(m, core.Qt__Widget)
 	centralWidget.SetObjectName("centralWidget")
 	m.SetCentralWidget(centralWidget)
-	verticalLayout := widgets.NewQVBoxLayout2(centralWidget)
-	verticalLayout.SetObjectName("verticalLayout")
 
 	m.tabsWidget = widgets.NewQTabWidget(centralWidget)
 	m.tabsWidget.SetObjectName("tabWidget")
 	m.tabsWidget.SetTabsClosable(true)
 	m.tabsWidget.SetMovable(true)
 
-	m.tabGistList["untitled"] = nil // there is no gist associated to this tab
-
+	verticalLayout := widgets.NewQVBoxLayout2(centralWidget)
+	verticalLayout.SetObjectName("verticalLayout")
 	verticalLayout.AddWidget(m.tabsWidget, 0, 0)
 
 	m.menubar = menubar.NewMenuBar(m)
@@ -188,7 +139,13 @@ func (m *MainWindow) setupUI() {
 		m.app.Quit()
 	})
 	m.menubar.ConnectOpenSettings(func(bool) {
-		m.showSettings()
+		m.showSettings(func() {
+			m.gistService.Username = m.settings.Username
+			m.gistService.Token = m.settings.Token
+			m.gistList.Clear()
+			m.searchbox.Clear()
+			go m.populate()
+		})
 	})
 
 	m.sysTray.ConnectActivated(m.sysTrayClick)
@@ -204,20 +161,65 @@ func (m *MainWindow) setupUI() {
 	})
 	m.searchbox.ConnectOpenGist(m.openGistByID)
 	m.menubar.ConnectNewGist(m.newGist)
-	m.gistService = gist.Service{}
+
+	if m.gistService.Logger == nil {
+		m.gistService.Logger = m.logger
+	}
+	if m.gistService.CacheDir == "" {
+		m.gistService.CacheDir = m.cacheDir()
+	}
 }
 
-// GistList returns the associated gistList.
-func (m *MainWindow) GistList() *gistlist.Container { return m.gistList }
+// Display shows the main window.
+func (m *MainWindow) Display(app *widgets.QApplication) error {
+	var err error
+	if m.name == "" {
+		m.name = "gistflow"
+	}
+	m.app = app
+	m.setStyleSheet(":/qml/stylesheet.qss")
+	m.Show()
 
-// TabsWidget returns the associated tabsWidget.
-func (m *MainWindow) TabsWidget() *widgets.QTabWidget { return m.tabsWidget }
+	populate := func() {
+		m.lastGeometry()
+		m.app.ConnectAboutToQuit(m.recordGeometry)
+		m.gistService.Username = m.settings.Username
+		m.gistService.Token = m.settings.Token
+		go m.populate()
+	}
+	m.settings, err = conf.New(m.name)
+	if err != nil {
+		m.showSettings(populate)
+		return nil
+	}
 
-// SetGistService sets the service required for public api interactions.
-func (m *MainWindow) SetGistService(g gist.Service) { m.gistService = g }
+	populate()
+	return nil
+}
 
-// SetApp sets the app instance.
-func (m *MainWindow) SetApp(app *widgets.QApplication) { m.app = app }
+func (m *MainWindow) setStyleSheet(name string) {
+	file := core.NewQFile2(name)
+	if ok := file.Open(core.QIODevice__ReadOnly); ok {
+		defer file.Close()
+		contents := file.ReadAll()
+		sheet := core.NewQLatin1String5(contents)
+		m.SetStyleSheet(sheet.Latin1())
+	}
+}
+
+// showSettings calls the `callback` after the settings tab is closed.
+func (m *MainWindow) showSettings(callback func()) {
+	t := conf.NewTab(m.tabsWidget)
+	t.SetSettings(m.settings)
+	m.tabsWidget.AddTab(t, "Settings")
+	m.tabsWidget.SetCurrentWidget(t)
+	tabIndex := m.tabsWidget.IndexOf(t)
+	m.tabsWidget.ConnectTabCloseRequested(func(index int) {
+		if index == tabIndex {
+			callback()
+		}
+	})
+}
 
 func (m *MainWindow) lastGeometry() {
 	tmp := widgets.NewQWidget(nil, 0)
@@ -236,13 +238,6 @@ func (m *MainWindow) recordGeometry() {
 
 func (m *MainWindow) populate() {
 	var foundOne bool
-	if m.gistService.Logger == nil {
-		m.gistService.Logger = m.logger
-	}
-	if m.gistService.CacheDir == "" {
-		m.gistService.CacheDir = m.cacheDir()
-	}
-
 	for item := range m.gistService.Iter() {
 		foundOne = true
 		m.searchbox.Add(item)

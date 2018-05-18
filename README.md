@@ -33,6 +33,7 @@ This gives the application the access to read and write gists.
 
 ## Notes
 * This application is under heavy development.
+* You can invoke a search box with `Ctrl+P`.
 * If you have new ideas or found any issues, please feel free to create an [issue][issues].
 * Change logs can be found [here](./CHANGELOG.md).
 

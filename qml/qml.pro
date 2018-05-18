@@ -1,10 +1,10 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2018-05-04T03:30:11
+# Project created by QtCreator 2018-05-16T00:27:10
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui uitools
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -25,20 +25,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        mainwindow.cpp \
-    gist.cpp
+        mainwindow.cpp
 
 HEADERS += \
-        mainwindow.h \
-    gist.h
+        mainwindow.h
 
 FORMS += \
         mainwindow.ui \
-    gist.ui \
-    searchbox.ui \
-    create.ui \
-    tabheader.ui \
-    settings.ui
+    main2.ui
 
-DISTFILES += \
-    ../app.ico
+RESOURCES += \
+    resources.qrc

@@ -5,6 +5,7 @@
 package searchbox
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -132,12 +133,8 @@ func testFiltering(t *testing.T) {
 		description1 = "adfasdfA A Aasdfakfj"
 		description2 = "klsjdhfB B Bsdfklsjhf"
 		d            = NewDialog(widgets.NewQWidget(nil, 0), 0)
-		g1           = NewListItem(nil)
-		g2           = NewListItem(nil)
 	)
 
-	g1.Description = description1
-	g2.Description = description2
 	d.Add(gist.Gist{Description: description1})
 	d.Add(gist.Gist{Description: description2})
 
@@ -174,12 +171,8 @@ func testKeepTopMostIndexOnResults(t *testing.T) {
 		description2 = "xDmPggqRJSKP8R"
 		parent       = widgets.NewQWidget(nil, 0)
 		d            = NewDialog(parent, 0)
-		g1           = NewListItem(nil)
-		g2           = NewListItem(nil)
 	)
 
-	g1.Description = description1
-	g2.Description = description2
 	d.Add(gist.Gist{Description: description1})
 	d.Add(gist.Gist{Description: description2})
 
@@ -263,4 +256,38 @@ func testOpenGistSlot(t *testing.T) {
 	}
 }
 
-// TODO: typing in results should add to the input
+func TestClear(t *testing.T) { tRunner.Run(func() { testClear(t) }) }
+func testClear(t *testing.T) {
+	d := NewDialog(widgets.NewQWidget(nil, 0), 0)
+	count := 20
+	for i := 0; i < count; i++ {
+		d.Add(gist.Gist{
+			Description: fmt.Sprintf("Z60JPiFRj9sm7gcHN4_%d", i),
+		})
+	}
+
+	if d.Model().RowCount(core.NewQModelIndex()) != count {
+		t.Errorf("RowCount() = %d, want %d", d.Model().RowCount(core.NewQModelIndex()), count)
+	}
+	d.Clear()
+	if d.Model().RowCount(core.NewQModelIndex()) != 0 {
+		t.Errorf("RowCount() = %d, want 0", d.Model().RowCount(core.NewQModelIndex()))
+	}
+	d.Add(gist.Gist{
+		Description: "bu3C",
+	})
+	d.Clear()
+	if d.Model().RowCount(core.NewQModelIndex()) != 0 {
+		t.Errorf("RowCount() = %d, want 0", d.Model().RowCount(core.NewQModelIndex()))
+	}
+	d.Clear()
+	if d.Model().RowCount(core.NewQModelIndex()) != 0 {
+		t.Errorf("RowCount() = %d, want 0", d.Model().RowCount(core.NewQModelIndex()))
+	}
+}
+
+// test typing in results should add to the input.
+func TestTypeInResults(t *testing.T) { tRunner.Run(func() { testTypeInResults(t) }) }
+func testTypeInResults(t *testing.T) {
+	t.Error("not implemented yet")
+}
