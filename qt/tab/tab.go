@@ -200,7 +200,6 @@ func (t *Tab) removeFile(name string) {
 	c := t.FindChild(name, core.Qt__FindChildrenRecursively).Pointer()
 	f := NewFileFromPointer(c)
 	f.DestroyQWidget()
-
 	delete(t.gist.Files, name)
 }
 

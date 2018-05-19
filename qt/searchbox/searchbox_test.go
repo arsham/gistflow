@@ -197,10 +197,10 @@ func TestNagigatingSearchBox(t *testing.T) {
 	down := testlib.NewQTestEventList()
 	down.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
 
-	tRunner.Run(func() { testNagigatingSearchBox(t, "up", up) })
-	tRunner.Run(func() { testNagigatingSearchBox(t, "down", down) })
+	tRunner.Run(func() { testNagigatingSearchBox(t, "up", up, -1) })
+	tRunner.Run(func() { testNagigatingSearchBox(t, "down", down, +1) })
 }
-func testNagigatingSearchBox(t *testing.T, name string, dir *testlib.QTestEventList) {
+func testNagigatingSearchBox(t *testing.T, name string, dir *testlib.QTestEventList, delta int) {
 	var (
 		description = "kIdCJuTsv7N2R2"
 		parent      = widgets.NewQWidget(nil, 0)
@@ -209,15 +209,31 @@ func testNagigatingSearchBox(t *testing.T, name string, dir *testlib.QTestEventL
 	)
 	g.Description = description
 	d.Add(gist.Gist{Description: description})
+	d.Add(gist.Gist{Description: description})
+	d.Add(gist.Gist{Description: description})
+	d.Add(gist.Gist{Description: description})
 
 	app.SetActiveWindow(d)
 	d.View(parent.Geometry())
 	dir.Simulate(d)
-	if d.results.CurrentIndex().Row() != 0 {
-		t.Errorf("%s: CurrentIndex().Row() = %d, want 0", name, d.results.CurrentIndex().Row())
+	currentRow := d.results.CurrentIndex().Row()
+	if currentRow != 0 {
+		t.Errorf("%s: CurrentIndex().Row() = %d, want 0", name, currentRow)
 	}
 	if !d.results.HasFocus() {
 		t.Errorf("%s: results didn't get focused", name)
+	}
+
+	// positioning on the second row so the up key would give us a new row.
+	down := testlib.NewQTestEventList()
+	down.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
+	down.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
+	down.Simulate(d.results)
+	currentRow = d.results.CurrentIndex().Row()
+
+	dir.Simulate(d.results)
+	if d.results.CurrentIndex().Row() != currentRow+delta {
+		t.Errorf("%s: CurrentIndex().Row() = %d, want %d", name, d.results.CurrentIndex().Row(), currentRow+delta)
 	}
 }
 
@@ -250,7 +266,13 @@ func testOpenGistSlot(t *testing.T) {
 		event.AddKeyClick(key, core.Qt__NoModifier, -1)
 		event.Simulate(d.results)
 		if !called {
-			t.Error("signal wasn't received")
+			t.Error("on results: signal wasn't received")
+		}
+		called = false
+
+		event.Simulate(d.input)
+		if !called {
+			t.Error("on input: signal wasn't received")
 		}
 		called = false
 	}
@@ -289,5 +311,40 @@ func testClear(t *testing.T) {
 // test typing in results should add to the input.
 func TestTypeInResults(t *testing.T) { tRunner.Run(func() { testTypeInResults(t) }) }
 func testTypeInResults(t *testing.T) {
-	t.Error("not implemented yet")
+	var (
+		desc = "vnAGQig0za3pXfzxT1Nhg6Wk"
+		d    = NewDialog(nil, 0)
+	)
+	app.SetActiveWindow(d)
+	d.Show()
+	defer d.Hide()
+
+	d.Add(gist.Gist{Description: desc})
+	d.Add(gist.Gist{Description: desc})
+	d.Add(gist.Gist{Description: desc})
+	d.Add(gist.Gist{Description: desc})
+	d.Add(gist.Gist{Description: desc})
+
+	d.results.SetFocus2()
+	aEvent := testlib.NewQTestEventList()
+	aEvent.AddKeyPress(core.Qt__Key_A, core.Qt__NoModifier, -1)
+	aEvent.Simulate(d.results)
+	if d.input.Text() != "a" {
+		t.Errorf("input text = `%s`, want `%s`", d.input.Text(), "a")
+	}
+	if !d.input.HasFocus() {
+		t.Error("Input didn't get focused")
+	}
+
+	d.results.SetFocus2()
+	downEvent := testlib.NewQTestEventList()
+	downEvent.AddKeyPress(core.Qt__Key_Down, core.Qt__NoModifier, -1)
+	downEvent.Simulate(d.results)
+	aEvent.Simulate(d.results)
+	if d.input.Text() != "aa" {
+		t.Errorf("input text = `%s`, want `%s`", d.input.Text(), "aa")
+	}
+	if !d.input.HasFocus() {
+		t.Error("Input didn't get focused")
+	}
 }

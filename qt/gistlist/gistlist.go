@@ -25,20 +25,16 @@ type Container struct {
 	items map[string]*widgets.QListWidgetItem
 }
 
-func init() {
-	Container_QRegisterMetaType()
-}
-
 func (c *Container) init() {
 	c.ConnectAdd(c.add)
 	c.items = make(map[string]*widgets.QListWidgetItem, 10)
 }
 
-func (c *Container) add(r gist.Gist) {
+func (c *Container) add(g gist.Gist) {
 	item := widgets.NewQListWidgetItem(c, 0)
-	description := r.Description
+	description := g.Description
 	if description == "" {
-		for n := range r.Files {
+		for n := range g.Files {
 			description = n
 			break
 		}
@@ -47,9 +43,9 @@ func (c *Container) add(r gist.Gist) {
 		description = description[:maxLen-len(truncateStr)] + truncateStr
 	}
 	item.SetText(description)
-	item.SetData(int(core.Qt__UserRole), core.NewQVariant14(r.ID))
+	item.SetData(int(core.Qt__UserRole), core.NewQVariant14(g.ID))
 	c.AddItem2(item)
-	c.items[r.ID] = item
+	c.items[g.ID] = item
 }
 
 // ID returns the ID of the gist associated with the index.

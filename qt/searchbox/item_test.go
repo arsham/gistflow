@@ -26,7 +26,7 @@ func testRemove(t *testing.T) {
 	l.AddGist(item2)
 
 	isIn := func(id string) bool {
-		for _, m := range l.Gists() {
+		for _, m := range l.gists {
 			if m.GistID == id {
 				return true
 			}

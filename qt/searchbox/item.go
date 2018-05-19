@@ -15,8 +15,8 @@ type listModel struct {
 	_ func()          `constructor:"init"`
 	_ func(*listItem) `slot:"addGist"`
 
-	_ map[int]*core.QByteArray `property:"roles"`
-	_ []*listItem              `property:"gists"`
+	roles map[int]*core.QByteArray
+	gists []*listItem
 }
 
 // listItem is one row in the QListView. This is a different gist than
@@ -26,21 +26,25 @@ type listItem struct {
 	core.QObject
 
 	GistID      string
-	GistURL     string
 	Description string
 }
 
 func (l *listModel) init() {
-	l.SetRoles(map[int]*core.QByteArray{
+	l.roles = map[int]*core.QByteArray{
 		gistID:      core.NewQByteArray2("GistID", len("GistID")),
-		gistURL:     core.NewQByteArray2("GistURL", len("GistURL")),
 		description: core.NewQByteArray2("Description", len("Description")),
-	})
+	}
 
 	l.ConnectData(l.data)
-	l.ConnectRowCount(l.rowCount)
-	l.ConnectColumnCount(l.columnCount)
-	l.ConnectRoleNames(l.roleNames)
+	l.ConnectRowCount(func(parent *core.QModelIndex) int {
+		return len(l.gists)
+	})
+	l.ConnectColumnCount(func(parent *core.QModelIndex) int {
+		return 1
+	})
+	l.ConnectRoleNames(func() map[int]*core.QByteArray {
+		return l.roles
+	})
 
 	l.ConnectAddGist(l.addGist)
 }
@@ -50,17 +54,14 @@ func (l *listModel) data(index *core.QModelIndex, role int) *core.QVariant {
 		return core.NewQVariant()
 	}
 
-	if index.Row() >= len(l.Gists()) {
+	if index.Row() >= len(l.gists) {
 		return core.NewQVariant()
 	}
 
-	var p = l.Gists()[index.Row()]
+	var p = l.gists[index.Row()]
 	switch role {
 	case gistID:
 		return core.NewQVariant14(p.GistID)
-
-	case gistURL:
-		return core.NewQVariant14(p.GistURL)
 
 	case description:
 		return core.NewQVariant14(p.Description)
@@ -70,30 +71,18 @@ func (l *listModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	}
 }
 
-func (l *listModel) rowCount(parent *core.QModelIndex) int {
-	return len(l.Gists())
-}
-
-func (l *listModel) columnCount(parent *core.QModelIndex) int {
-	return 1
-}
-
-func (l *listModel) roleNames() map[int]*core.QByteArray {
-	return l.Roles()
-}
-
 func (l *listModel) addGist(p *listItem) {
-	l.BeginInsertRows(core.NewQModelIndex(), len(l.Gists()), len(l.Gists()))
-	l.SetGists(append(l.Gists(), p))
+	l.BeginInsertRows(core.NewQModelIndex(), len(l.gists), len(l.gists))
+	l.gists = append(l.gists, p)
 	l.EndInsertRows()
 }
 
 // remove removes the gist identified by gistID from the list.
 func (l *listModel) remove(gistID string) {
-	for row, p := range l.Gists() {
+	for row, p := range l.gists {
 		if p.GistID == gistID {
 			l.BeginRemoveRows(core.NewQModelIndex(), row, row)
-			l.SetGists(append(l.Gists()[:row], l.Gists()[row+1:]...))
+			l.gists = append(l.gists[:row], l.gists[row+1:]...)
 			l.EndRemoveRows()
 			return
 		}
@@ -104,6 +93,6 @@ func (l *listModel) clear() {
 	l.BeginResetModel()
 	l.ResetInternalData()
 	g := make([]*listItem, 0)
-	l.SetGists(g)
+	l.gists = g
 	l.EndResetModel()
 }
