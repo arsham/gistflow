@@ -143,11 +143,6 @@ func (s *Service) Get(id string) (Gist, error) {
 	if err != nil {
 		return g, err
 	}
-
-	// TODO: because map keys are not ordered, the file array should become an
-	// ordered map, otherwise there is no guaranty that the first file is the
-	// main gist.
-
 	g.URL = gistURL
 	return g, nil
 }

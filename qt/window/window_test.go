@@ -898,7 +898,7 @@ func testNewGistSave(t *testing.T) {
 	}
 	index := window.tabsWidget.IndexOf(tab)
 	if window.tabsWidget.TabText(index) != fileName {
-		t.Errorf("window.tabsWidget.TabText(%d) = %s, want %s", window.tabsWidget.TabText(index), index, fileName)
+		t.Errorf("window.tabsWidget.TabText(%d) = %s, want %s", index, window.tabsWidget.TabText(index), fileName)
 	}
 	if !window.gistList.HasID(id) {
 		t.Errorf("%s was not added to gistList", id)
@@ -1065,6 +1065,42 @@ func testDisplayAfterConfig(t *testing.T) {
 	case <-called:
 	case <-time.After(time.Second):
 		t.Error("didn't call the server")
+	}
+}
+
+func TestWindowMenuActions(t *testing.T) { tRunner.Run(func() { testWindowMenuActions(t) }) }
+func testWindowMenuActions(t *testing.T) {
+	window := NewMainWindow(nil, 0)
+	window.name = appName
+	defer window.Hide()
+	app.SetActiveWindow(window)
+	window.Show()
+	toolbarAction := window.menubar.ToggleToolbar
+	gistListAction := window.menubar.ToggleGistList
+
+	if window.gistList.IsHidden() {
+		t.Error("Initial state: gistList is hidden")
+	}
+	if window.toolBar.IsHidden() {
+		t.Error("Initial state: toolbar is hidden")
+	}
+
+	toolbarAction(false)
+	if window.toolBar.IsVisible() {
+		t.Error("toolbar is still visible")
+	}
+	toolbarAction(true)
+	if window.toolBar.IsHidden() {
+		t.Error("toolbar is still hidden")
+	}
+
+	gistListAction(false)
+	if window.dockWidget.IsVisible() {
+		t.Error("gistList is still visible")
+	}
+	gistListAction(true)
+	if window.dockWidget.IsHidden() {
+		t.Error("gistList is still hidden")
 	}
 }
 

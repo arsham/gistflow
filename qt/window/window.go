@@ -168,6 +168,23 @@ func (m *MainWindow) setupUI() {
 	if m.gistService.CacheDir == "" {
 		m.gistService.CacheDir = m.cacheDir()
 	}
+
+	m.menubar.ConnectToggleToolbar(func(active bool) {
+		switch active {
+		case true:
+			m.toolBar.Show()
+		case false:
+			m.toolBar.Hide()
+		}
+	})
+	m.menubar.ConnectToggleGistList(func(active bool) {
+		switch active {
+		case true:
+			m.dockWidget.Show()
+		case false:
+			m.dockWidget.Close()
+		}
+	})
 }
 
 // Display shows the main window.

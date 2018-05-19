@@ -40,7 +40,6 @@ func testMenuBar(t *testing.T) {
 	actions := m.options.Actions()
 	if len(actions) == 0 {
 		t.Error("len(m.options.actions) = 0, want at least 1")
-		return
 	}
 }
 
@@ -64,7 +63,6 @@ func testCtrlQ(t *testing.T) {
 	if !called {
 		t.Error("Ctrl+Q didn't trigger the actions.Quit")
 	}
-	return
 }
 
 func TestCtrlN(t *testing.T) { tRunner.Run(func() { testCtrlN(t) }) }
@@ -87,5 +85,42 @@ func testCtrlN(t *testing.T) {
 	if !called {
 		t.Error("Ctrl+N didn't trigger the actions.NewGist")
 	}
-	return
+}
+
+func TestToggleToolbar(t *testing.T) { tRunner.Run(func() { testToggleToolbar(t) }) }
+func testToggleToolbar(t *testing.T) {
+	var called bool
+	window := widgets.NewQMainWindow(nil, 0)
+	m := NewMenuBar(window)
+	window.Show()
+	defer window.Hide()
+	app.SetActiveWindow(window)
+
+	m.ConnectToggleToolbar(func(bool) {
+		called = true
+	})
+
+	m.actions.Toolbar.Trigger()
+	if !called {
+		t.Error("didn't send the ToggleToolbar signal")
+	}
+}
+
+func TestToggleGistList(t *testing.T) { tRunner.Run(func() { testToggleGistList(t) }) }
+func testToggleGistList(t *testing.T) {
+	var called bool
+	window := widgets.NewQMainWindow(nil, 0)
+	m := NewMenuBar(window)
+	window.Show()
+	defer window.Hide()
+	app.SetActiveWindow(window)
+
+	m.ConnectToggleGistList(func(bool) {
+		called = true
+	})
+
+	m.actions.GistList.Trigger()
+	if !called {
+		t.Error("didn't send the ToggleGistList signal")
+	}
 }

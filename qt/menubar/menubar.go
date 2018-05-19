@@ -18,6 +18,8 @@ type MenuBar struct {
 	_ func(bool) `signal:"copyURLToClipboard"`
 	_ func(bool) `signal:"openInBrowser"`
 	_ func(bool) `signal:"openSettings"`
+	_ func(bool) `signal:"toggleToolbar"`
+	_ func(bool) `signal:"toggleGistList"`
 
 	options *widgets.QMenu
 	window  *widgets.QMenu
@@ -64,6 +66,8 @@ func (m *MenuBar) init() {
 	m.actions.NewGist.ConnectTriggered(m.NewGist)
 
 	m.actions.Settings.ConnectTriggered(m.OpenSettings)
+	m.actions.Toolbar.ConnectToggled(m.ToggleToolbar)
+	m.actions.GistList.ConnectToggled(m.ToggleGistList)
 }
 
 // Actions returns all actions assigned to this MenuBar.
